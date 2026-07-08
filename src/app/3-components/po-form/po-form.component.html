@@ -1,0 +1,176 @@
+<div class="max-w-5xl mx-auto p-4 bg-white min-h-screen">
+  
+  <div class="text-center mb-8 border-b pb-4">
+    <img src="logo/logo.png" alt="Palomo 1953 Logo" class="mx-auto mb-4 object-contain h-16">
+    <h1 class="text-2xl font-bold text-gray-800">Production Cost & Landing Price Calculator</h1>
+    <p class="text-gray-500 mt-2">Plataforma interna para el cálculo y proyección de costos.</p>
+  </div>
+
+  <div class="mb-8">
+    <div *ngFor="let category of categories" class="mb-10 border border-gray-300 rounded-lg overflow-hidden shadow-sm">
+      
+      <div class="bg-[#294337] text-white p-4 flex justify-between items-center cursor-pointer hover:bg-[#1e3229] transition-colors" 
+           (click)="category.isExpanded = !category.isExpanded">
+        <div>
+          <h2 class="text-xl font-bold tracking-widest uppercase">{{ category.categoryName }}</h2>
+          <p class="text-sm text-gray-300">{{ category.description }}</p>
+        </div>
+        
+        <div class="transform transition-transform duration-300" [ngClass]="{'rotate-180': category.isExpanded}">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-6 h-6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+          </svg>
+        </div>
+      </div>
+
+      <div *ngIf="category.isExpanded" class="p-4 bg-gray-50 flex flex-col gap-6 border-t border-gray-300">
+        
+        <div *ngFor="let style of category.styles" class="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
+          
+          <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center border-b border-gray-200 pb-4 mb-5 gap-4">
+            <div>
+              <h3 class="text-2xl font-bold text-gray-800 mb-1">{{ style.styleName }}</h3>
+              <p *ngIf="style.description" class="text-xs text-gray-500 italic max-w-md">{{ style.description }}</p>
+            </div>
+            
+            <div class="flex flex-wrap gap-3 items-center bg-gray-50 p-3 rounded-lg border border-gray-200 shadow-inner">
+              
+              <div class="text-center px-3 border-r border-gray-300">
+                <p class="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Mfg Cost</p>
+                <p class="text-xl font-bold text-gray-800">${{ getManufacturingCost(style) | number:'1.2-2' }}</p>
+              </div>
+              
+              <div class="flex items-center gap-3 px-2">
+                <div class="flex flex-col">
+                  <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wide mb-1 text-center">Taxes (%)</label>
+                  <input type="number" step="0.1" [(ngModel)]="style.taxesPercent" class="w-16 p-1.5 text-sm font-bold border border-gray-300 rounded focus:ring-2 focus:ring-[#294337] outline-none text-center transition-all bg-white">
+                </div>
+                <span class="text-gray-300 font-bold text-lg">+</span>
+                <div class="flex flex-col">
+                  <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wide mb-1 text-center">Freight ($)</label>
+                  <input type="number" step="1" [(ngModel)]="style.freightCost" class="w-20 p-1.5 text-sm font-bold border border-gray-300 rounded focus:ring-2 focus:ring-[#294337] outline-none text-center transition-all bg-white">
+                </div>
+              </div>
+
+              <div class="text-center px-4 bg-[#294337] rounded py-2 ml-1 shadow-sm">
+                <p class="text-[10px] font-bold text-gray-200 uppercase tracking-wide">Landing Price</p>
+                <p class="text-2xl font-bold text-white">${{ getLandingPrice(style) | number:'1.2-2' }}</p>
+              </div>
+
+            </div>
+          </div>
+
+          <div class="flex flex-col md:flex-row gap-6">
+            
+            <div class="relative w-32 md:w-48 flex flex-col items-center shrink-0">
+              <div class="relative w-full aspect-square rounded-md border border-gray-200 overflow-hidden group bg-gray-100 flex items-center justify-center">
+                
+                <img *ngIf="style.components[getVariantIndex(category.categoryName, style.styleName)]?.imageUrl" 
+                     [src]="style.components[getVariantIndex(category.categoryName, style.styleName)].imageUrl" 
+                     class="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity" 
+                     (click)="openModal(category.categoryName, style, getVariantIndex(category.categoryName, style.styleName))">
+                
+                <div *ngIf="!style.components[getVariantIndex(category.categoryName, style.styleName)]?.imageUrl" 
+                     class="w-full h-full cursor-pointer flex items-center justify-center hover:bg-gray-200 transition-colors"
+                     (click)="openModal(category.categoryName, style, getVariantIndex(category.categoryName, style.styleName))">
+                  <span class="text-xs text-gray-400 text-center leading-tight font-bold">Sin<br>Imagen</span>
+                </div>
+                
+                <button *ngIf="style.components.length > 1" (click)="prevVariant(category.categoryName, style.styleName, style.components.length, $event)" 
+                        class="absolute left-0 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black text-white w-6 h-6 flex items-center justify-center rounded-r transition-colors">‹</button>
+                <button *ngIf="style.components.length > 1" (click)="nextVariant(category.categoryName, style.styleName, style.components.length, $event)" 
+                        class="absolute right-0 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black text-white w-6 h-6 flex items-center justify-center rounded-l transition-colors">›</button>
+              </div>
+            </div>
+            
+            <div class="flex-1 flex flex-col">
+              
+              <div class="flex flex-wrap gap-2 mb-4 border-b border-gray-200 pb-3">
+                <button *ngFor="let comp of style.components; let cIndex = index"
+                        (click)="activeVariantIndices[category.categoryName + '-' + style.styleName] = cIndex"
+                        [ngClass]="activeVariantIndices[category.categoryName + '-' + style.styleName] === cIndex ? 'bg-[#294337] text-white shadow-sm ring-2 ring-offset-1 ring-[#294337]' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                        class="px-4 py-2 rounded-md text-sm font-bold transition-all flex items-center gap-2">
+                  {{ comp.componentName }}
+                  <span [ngClass]="activeVariantIndices[category.categoryName + '-' + style.styleName] === cIndex ? 'bg-white/20 text-white' : 'bg-white text-gray-500 border border-gray-200'" 
+                        class="px-1.5 py-0.5 rounded text-xs">
+                    ${{ getComponentCost(comp) | number:'1.2-2' }}
+                  </span>
+                </button>
+              </div>
+
+              <div class="bg-gray-50 border border-gray-200 rounded-md p-4 flex-1">
+                <ng-container *ngFor="let comp of style.components; let cIndex = index">
+                  <div *ngIf="activeVariantIndices[category.categoryName + '-' + style.styleName] === cIndex">
+                    
+                    <div class="flex items-center justify-between mb-3 border-b border-gray-200 pb-2">
+                      <h4 class="font-bold text-sm text-[#294337] uppercase tracking-wider">Desglose de Costos: {{ comp.componentName }}</h4>
+                      <span class="text-xs font-bold text-gray-500">Subtotal: ${{ getComponentCost(comp) | number:'1.2-2' }}</span>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      <div *ngFor="let material of comp.materials" class="flex items-center justify-between bg-white border border-gray-300 rounded p-2.5 shadow-sm hover:border-[#294337] transition-colors">
+                        <span class="text-xs font-bold text-gray-700 truncate pr-2" [title]="material.name">{{ material.name }}</span>
+                        <div class="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded px-2 py-1 shrink-0">
+                          <span class="text-gray-500 text-sm font-bold">$</span>
+                          <input type="number" step="0.10" [(ngModel)]="material.cost" 
+                                 class="w-16 text-sm font-bold text-right bg-transparent outline-none text-[#294337]">
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+                </ng-container>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-12 mb-4 text-center">
+    <p class="text-xs text-gray-400">
+      Developed by 
+      <a href="https://eldonchambas.github.io/PersonalWebsiteEnglishRodrigoAvila/" target="_blank" rel="noopener noreferrer" class="font-semibold text-gray-500 hover:text-[#294337] transition-colors">
+        ElDonChambas
+      </a>
+    </p>
+  </div>
+
+</div>
+
+<div *ngIf="isModalOpen && modalData.style" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90 p-4 backdrop-blur-sm" (click)="closeModal()">
+  <div class="relative w-full max-w-2xl flex flex-col items-center justify-center" (click)="$event.stopPropagation()">
+    
+    <button (click)="closeModal()" class="absolute -top-12 right-0 md:-right-10 text-white text-4xl hover:text-gray-300 font-bold z-50">&times;</button>
+    
+    <div class="relative w-full flex items-center justify-center group">
+      
+      <button *ngIf="modalData.style.components.length > 1" (click)="modalPrev($event)" 
+              class="absolute left-0 md:-left-12 z-50 text-white text-6xl px-3 py-6 hover:scale-110 transition-transform drop-shadow-lg">&lsaquo;</button>
+      
+      <img *ngIf="modalData.style.components[modalData.currentIndex]?.imageUrl" 
+           [src]="modalData.style.components[modalData.currentIndex].imageUrl" 
+           class="max-h-[75vh] max-w-full object-contain rounded-lg shadow-2xl">
+           
+      <div *ngIf="!modalData.style.components[modalData.currentIndex]?.imageUrl" 
+           class="w-64 h-64 bg-gray-200 flex items-center justify-center rounded-lg shadow-2xl">
+         <span class="text-gray-500 font-bold text-2xl">Sin Imagen</span>
+      </div>
+
+      <button *ngIf="modalData.style.components.length > 1" (click)="modalNext($event)" 
+              class="absolute right-0 md:-right-12 z-50 text-white text-6xl px-3 py-6 hover:scale-110 transition-transform drop-shadow-lg">&rsaquo;</button>
+              
+    </div>
+
+    <div class="mt-6 text-center">
+      <h3 class="text-white text-3xl font-bold tracking-widest uppercase drop-shadow-md">
+        {{ modalData.style.components[modalData.currentIndex].componentName }}
+      </h3>
+      <p class="text-gray-300 text-lg mt-2 tracking-wide">{{ modalData.style.styleName }}</p>
+    </div>
+
+  </div>
+</div>
