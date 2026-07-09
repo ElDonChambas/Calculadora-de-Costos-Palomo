@@ -6,7 +6,6 @@ export interface MaterialDetail {
 export interface ShoeComponent {
   id: string;
   componentName: string; // Ej: "Suela", "Corte", "Forro"
-  imageUrl?: string;     // Para mantener tu carrusel/modal
   materials: MaterialDetail[];
   selected?: boolean;    // Para saber qué pestaña estamos viendo
 }
@@ -16,6 +15,7 @@ export interface ProductStyle {
   description?: string;
   taxesPercent: number;  // % de impuestos (editable)
   freightCost: number;   // $ de flete (editable)
+  gallery: { colorName: string, imageUrl: string }[];
   components: ShoeComponent[];
 }
 
@@ -24,4 +24,6 @@ export interface ProductCategory {
   description: string;
   styles: ProductStyle[];
   isExpanded?: boolean;
+  marginPercent?: number;
+  selectedCurrency?: 'USD' | 'EUR' | 'JPY';
 }

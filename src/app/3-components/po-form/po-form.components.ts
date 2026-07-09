@@ -1,20 +1,30 @@
-import { Component, OnInit } from '@angular/core'; 
+import { Component, OnInit, inject } from '@angular/core'; 
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-// Asegúrate de que estas interfaces coincidan con tu nuevo archivo po.interface.ts
 import { ProductCategory, ProductStyle, ShoeComponent } from '../../1-models/po.interface';
+import { HttpClient } from '@angular/common/http';
+import { HttpClientModule } from '@angular/common/http';
 
 @Component({
   selector: 'app-po-form',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, HttpClientModule],
   templateUrl: './po-form.component.html'
 })
 export class PoFormComponent implements OnInit {
   
+  private http = inject(HttpClient);
+
+  exchangeRates: { [key: string]: number } = {
+    USD: 1,
+    EUR: 0.874771,
+    JPY: 162.3815
+  };
+  
   isModalOpen = false;
   modalData: { categoryName: string, style: ProductStyle | null, currentIndex: number } = { categoryName: '', style: null, currentIndex: 0 };
-  activeVariantIndices: { [styleName: string]: number } = {};
+  activeImageIndices: { [key: string]: number } = {};
+  activeTabIndices: { [key: string]: number } = {};
 
   ngOnInit() {
     console.log(
@@ -22,6 +32,26 @@ export class PoFormComponent implements OnInit {
       "font-size: 14px; font-weight: bold; color: #FFFFFF;",
       "font-size: 12px; color: gray;"
     );
+
+    this.obtenerTasasDeCambio();
+  }
+  
+  obtenerTasasDeCambio() {
+    // La nueva URL de la API: dominio .dev, versión /v1, y parámetros oficiales
+    const apiUrl = 'https://api.frankfurter.dev/v1/latest?base=USD&symbols=EUR,JPY';
+
+    this.http.get<any>(apiUrl).subscribe({
+      next: (respuesta: any) => {
+        // La API responde exitosamente, actualizamos nuestros valores
+        this.exchangeRates['EUR'] = respuesta.rates.EUR;
+        this.exchangeRates['JPY'] = respuesta.rates.JPY;
+        console.log('✅ Tasas de cambio actualizadas en vivo:', this.exchangeRates);
+      },
+      error: (error: any) => {
+        // Si hay un error (ej. sin internet), usamos los valores reales que configuraste
+        console.warn('⚠️ No se pudieron obtener las tasas en vivo, usando valores por defecto.', error.message);
+      }
+    });
   }
 
   categories: ProductCategory[] = [
@@ -29,18 +59,26 @@ export class PoFormComponent implements OnInit {
       categoryName: 'Calculadora de Costos',
       description: 'Prototipo MVP para desglose de manufactura',
       isExpanded: true,
+      marginPercent: 15,
+      selectedCurrency: 'USD',
       styles: [
         // --- ZAPATO 1 ---
         {
           styleName: 'Edmund Plain Toe Boot',
           description: 'Construcción Goodyear Welt',
+          gallery: [
+            { colorName: 'Black', imageUrl: '/productos/gold-edmund/gold-edmund-black.webp' },
+            { colorName: 'Brown', imageUrl: '/productos/gold-edmund/gold-edmund-brown.webp' },
+            { colorName: 'Whiskey', imageUrl: '/productos/gold-edmund/gold-edmund-whiskey.webp' },
+            { colorName: 'Polo', imageUrl: '/productos/gold-edmund/gold-edmund-polo.webp' },
+            { colorName: 'Cola', imageUrl: '/productos/gold-edmund/gold-edmund-cola.webp' }
+          ],
           taxesPercent: 12, // Porcentaje inicial
           freightCost: 15,  // Flete inicial
           components: [
             {
               id: 'comp-suela',
               componentName: 'Fondo y Suela',
-              imageUrl: '/productos/gold-edmund/gold-edmund-black.webp',
               materials: [
                 { name: 'Vibram Outsole', cost: 12.50 },
                 { name: 'Entresuela de Cuero', cost: 8.00 },
@@ -51,7 +89,6 @@ export class PoFormComponent implements OnInit {
             {
               id: 'comp-corte',
               componentName: 'Corte (Piel)',
-              imageUrl: '/productos/gold-edmund/gold-edmund-brown.webp',
               materials: [
                 { name: 'Horween Chromexcel', cost: 22.00 },
                 { name: 'Hilo de costura', cost: 0.80 },
@@ -62,7 +99,6 @@ export class PoFormComponent implements OnInit {
             {
               id: 'comp-empaque',
               componentName: 'Forro y Empaque',
-              imageUrl: '/productos/gold-edmund/gold-edmund-whiskey.webp',
               materials: [
                 { name: 'Forro de Res', cost: 4.50 },
                 { name: 'Caja Palomo', cost: 3.50 },
@@ -75,13 +111,16 @@ export class PoFormComponent implements OnInit {
         {
           styleName: 'Sherman Chelsea Boot',
           description: 'Construcción 360° Flat Leather',
+          gallery: [
+            { colorName: 'Black', imageUrl: '/productos/gold-sherman/gold-chelsea-Black.webp' },
+            { colorName: 'Brown', imageUrl: '/productos/gold-sherman/gold-chelsea-brown.webp' }
+          ],
           taxesPercent: 12,
           freightCost: 15,
           components: [
             {
               id: 'comp-suela-sherman',
               componentName: 'Fondo y Suela',
-              imageUrl: '/productos/gold-sherman/gold-chelsea-Black.webp',
               materials: [
                 { name: 'Vibram Outsole', cost: 12.50 },
                 { name: 'Entresuela', cost: 7.50 },
@@ -91,7 +130,6 @@ export class PoFormComponent implements OnInit {
             {
               id: 'comp-corte-sherman',
               componentName: 'Corte (Piel)',
-              imageUrl: '/productos/gold-sherman/gold-chelsea-brown.webp',
               materials: [
                 { name: 'C.F. Stead Repello Suede', cost: 24.00 },
                 { name: 'Elásticos laterales', cost: 3.00 },
@@ -104,13 +142,16 @@ export class PoFormComponent implements OnInit {
         {
           styleName: 'James Slipper',
           description: 'Slipper de casa premium',
+          gallery: [
+            { colorName: 'Suede Toast', imageUrl: '/productos/gold-james/gold-james-suedetoast.webp' },
+            { colorName: 'Waxy Brown', imageUrl: '/productos/gold-james/gold-james-waxy.webp' }
+          ],
           taxesPercent: 12,
           freightCost: 10,
           components: [
             {
               id: 'comp-suela-james',
               componentName: 'Fondo y Suela',
-              imageUrl: '/productos/gold-james/gold-james-suedetoast.webp',
               materials: [
                 { name: 'Suela de gamuza', cost: 5.00 },
                 { name: 'Acolchado interno', cost: 2.50 }
@@ -119,7 +160,6 @@ export class PoFormComponent implements OnInit {
             {
               id: 'comp-corte-james',
               componentName: 'Corte (Piel)',
-              imageUrl: '/productos/gold-james/gold-james-waxy.webp',
               materials: [
                 { name: 'Waxy Pull-up Leather', cost: 15.00 },
                 { name: 'Ribete', cost: 1.50 }
@@ -132,44 +172,88 @@ export class PoFormComponent implements OnInit {
   ];
 
   // ==========================================
-  // MÉTODOS DE CÁLCULO FINANCIERO
+  // NUEVOS MÉTODOS DE CÁLCULO FINANCIERO
   // ==========================================
 
   getComponentCost(component: ShoeComponent): number {
     return component.materials.reduce((sum, mat) => sum + mat.cost, 0);
   }
 
-  getManufacturingCost(style: ProductStyle): number {
+  // 1. Costo puro de los materiales (Lo que cobra Duramas)
+  getDuramasCost(style: ProductStyle): number {
     return style.components.reduce((sum, comp) => sum + this.getComponentCost(comp), 0);
   }
 
-  getLandingPrice(style: ProductStyle): number {
-    const mfgCost = this.getManufacturingCost(style);
-    const taxesAmount = mfgCost * (style.taxesPercent / 100);
-    return mfgCost + taxesAmount + style.freightCost;
+  // 2. Costo Duramas + El Porcentaje global de la categoría (Precio FOB)
+  getFobPrice(category: ProductCategory, style: ProductStyle): number {
+    const duramasCost = this.getDuramasCost(style);
+    const margin = category.marginPercent || 0; 
+    return duramasCost * (1 + (margin / 100));
   }
 
+  // 3. Precio Final (FOB + Taxes + Freight)
+  getLandingPrice(category: ProductCategory, style: ProductStyle): number {
+    const fobPrice = this.getFobPrice(category, style);
+    const taxesAmount = fobPrice * (style.taxesPercent / 100);
+    return fobPrice + taxesAmount + style.freightCost;
+  }
+  
   // ==========================================
   // CONTROLES DEL CARRUSEL PEQUEÑO
   // ==========================================
 
-  getVariantIndex(categoryName: string, styleName: string): number {
-    const key = categoryName + '-' + styleName;
-    return this.activeVariantIndices[key] || 0;
+  // ==========================================
+  // CONTROLES DE IMAGEN Y PESTAÑAS (INDEPENDIENTES)
+  // ==========================================
+
+  // Para el carrusel de imágenes
+  getImageIndex(categoryName: string, styleName: string): number {
+    return this.activeImageIndices[categoryName + '-' + styleName] || 0;
   }
 
-  nextVariant(categoryName: string, styleName: string, length: number, event: Event) {
+  nextImage(categoryName: string, styleName: string, length: number, event: Event) {
     event.stopPropagation();
     const key = categoryName + '-' + styleName;
-    const current = this.getVariantIndex(categoryName, styleName);
-    this.activeVariantIndices[key] = (current + 1) % length;
+    const current = this.getImageIndex(categoryName, styleName);
+    this.activeImageIndices[key] = (current + 1) % length;
   }
 
-  prevVariant(categoryName: string, styleName: string, length: number, event: Event) {
+  prevImage(categoryName: string, styleName: string, length: number, event: Event) {
     event.stopPropagation();
     const key = categoryName + '-' + styleName;
-    const current = this.getVariantIndex(categoryName, styleName);
-    this.activeVariantIndices[key] = (current - 1 + length) % length;
+    const current = this.getImageIndex(categoryName, styleName);
+    this.activeImageIndices[key] = (current - 1 + length) % length;
+  }
+
+  // Para las pestañas de componentes
+  getTabIndex(categoryName: string, styleName: string): number {
+    return this.activeTabIndices[categoryName + '-' + styleName] || 0;
+  }
+
+  setTabIndex(categoryName: string, styleName: string, index: number) {
+    this.activeTabIndices[categoryName + '-' + styleName] = index;
+  }
+
+  // ==========================================
+  // CONVERTIDOR DE DIVISAS (Solo Landing Price)
+  // ==========================================
+
+  
+
+  // Calcula el Landing Price y lo multiplica por la tasa de cambio
+  getConvertedLandingPrice(category: ProductCategory, style: ProductStyle): number {
+    const usdPrice = this.getLandingPrice(category, style);
+    const currency = category.selectedCurrency || 'USD';
+    return usdPrice * this.exchangeRates[currency];
+  }
+
+  // Devuelve el símbolo correcto para la vista
+  getCurrencySymbol(currency?: string): string {
+    switch (currency) {
+      case 'EUR': return '€';
+      case 'JPY': return '¥';
+      default: return '$';
+    }
   }
 
   // ==========================================
@@ -187,23 +271,21 @@ export class PoFormComponent implements OnInit {
 
   modalNext(event: Event) {
     event.stopPropagation();
-    if (this.modalData.style) {
-      const len = this.modalData.style.components.length;
+    if (this.modalData.style && this.modalData.style.gallery) {
+      const len = this.modalData.style.gallery.length; // <-- AQUÍ
       this.modalData.currentIndex = (this.modalData.currentIndex + 1) % len;
-      // Sincroniza el índice del carrusel de fondo
       const key = this.modalData.categoryName + '-' + this.modalData.style.styleName;
-      this.activeVariantIndices[key] = this.modalData.currentIndex;
+      this.activeImageIndices[key] = this.modalData.currentIndex;
     }
   }
 
   modalPrev(event: Event) {
     event.stopPropagation();
-    if (this.modalData.style) {
-      const len = this.modalData.style.components.length;
+    if (this.modalData.style && this.modalData.style.gallery) {
+      const len = this.modalData.style.gallery.length; // <-- Y AQUÍ
       this.modalData.currentIndex = (this.modalData.currentIndex - 1 + len) % len;
-      // Sincroniza el índice del carrusel de fondo
       const key = this.modalData.categoryName + '-' + this.modalData.style.styleName;
-      this.activeVariantIndices[key] = this.modalData.currentIndex;
+      this.activeImageIndices[key] = this.modalData.currentIndex;
     }
   }
 }
