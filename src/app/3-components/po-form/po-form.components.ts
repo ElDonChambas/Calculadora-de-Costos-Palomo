@@ -1,9 +1,10 @@
-import { Component, OnInit, inject } from '@angular/core'; 
+import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core'; 
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ProductCategory, ProductStyle, ShoeComponent } from '../../1-models/po.interface';
 import { HttpClient } from '@angular/common/http';
 import { HttpClientModule } from '@angular/common/http';
+import * as Papa from 'papaparse';
 
 @Component({
   selector: 'app-po-form',
@@ -14,6 +15,7 @@ import { HttpClientModule } from '@angular/common/http';
 export class PoFormComponent implements OnInit {
   
   private http = inject(HttpClient);
+  private cdr = inject(ChangeDetectorRef);
 
   exchangeRates: { [key: string]: number } = {
     USD: 1,
@@ -77,32 +79,51 @@ export class PoFormComponent implements OnInit {
           freightCost: 15,  // Flete inicial
           components: [
             {
-              id: 'comp-suela',
-              componentName: 'Fondo y Suela',
+              id: 'comp-upper',
+              componentName: 'A. Upper',
               materials: [
-                { name: 'Vibram Outsole', cost: 12.50 },
-                { name: 'Entresuela de Cuero', cost: 8.00 },
-                { name: 'Hilo Goodyear', cost: 1.50 },
-                { name: 'Cerco (Welt)', cost: 3.00 }
+                { name: 'Portland Black 1.1-1.3', cost: 11.22 },
+                { name: 'Kip Lining Negro 0.8-1.0', cost: 0.35 }
               ]
             },
             {
-              id: 'comp-corte',
-              componentName: 'Corte (Piel)',
+              id: 'comp-linings',
+              componentName: 'B. Linings / Sundries',
               materials: [
-                { name: 'Horween Chromexcel', cost: 22.00 },
-                { name: 'Hilo de costura', cost: 0.80 },
-                { name: 'Ojetes metálicos', cost: 1.20 },
-                { name: 'Agujetas enceradas', cost: 0.85 }
+                { name: 'Footbed Kip Lining', cost: 0.90 },
+                { name: 'Linings Cathay Tan', cost: 3.15 },
+                { name: 'Threads', cost: 0.25 },
+                { name: 'Invisible Eyelets', cost: 0.96 },
+                { name: 'Cotton Laces', cost: 0.55 },
+                { name: 'Reinforcements', cost: 1.26 }
               ]
             },
             {
-              id: 'comp-empaque',
-              componentName: 'Forro y Empaque',
+              id: 'comp-bottom',
+              componentName: 'C. Bottom Unit',
               materials: [
-                { name: 'Forro de Res', cost: 4.50 },
-                { name: 'Caja Palomo', cost: 3.50 },
-                { name: 'Dust bags', cost: 1.50 }
+                { name: 'Leather Sole H-Verde', cost: 5.10 },
+                { name: 'Heel MCaffee/Leather', cost: 5.50 },
+                { name: 'Welt Cerco Strong Negro', cost: 4.35 },
+                { name: 'Footbed & Cushions', cost: 4.00 }
+              ]
+            },
+            {
+              id: 'comp-packaging',
+              componentName: 'D. Packaging',
+              materials: [
+                { name: 'Unit Box Small Palomo', cost: 1.50 },
+                { name: 'Master Box Small', cost: 0.60 },
+                { name: 'Tissue Paper', cost: 0.75 },
+                { name: 'Labeling', cost: 0.65 },
+                { name: 'Shoes Bag', cost: 2.50 }
+              ]
+            },
+            {
+              id: 'comp-misc',
+              componentName: 'E. Miscellaneous',
+              materials: [
+                { name: 'Costos Varios', cost: 1.95 }
               ]
             }
           ]
@@ -119,8 +140,24 @@ export class PoFormComponent implements OnInit {
           freightCost: 15,
           components: [
             {
-              id: 'comp-suela-sherman',
-              componentName: 'Fondo y Suela',
+              id: 'comp-upper-sherman',
+              componentName: 'A. Upper',
+              materials: [
+                { name: 'C.F. Stead Repello Suede', cost: 24.00 }
+              ]
+            },
+            {
+              id: 'comp-linings-sherman',
+              componentName: 'B. Linings / Sundries',
+              materials: [
+                { name: 'Elásticos laterales', cost: 3.00 },
+                { name: 'Tiradores', cost: 1.00 },
+                { name: 'Linings', cost: 2.50 }
+              ]
+            },
+            {
+              id: 'comp-bottom-sherman',
+              componentName: 'C. Bottom Unit',
               materials: [
                 { name: 'Vibram Outsole', cost: 12.50 },
                 { name: 'Entresuela', cost: 7.50 },
@@ -128,12 +165,18 @@ export class PoFormComponent implements OnInit {
               ]
             },
             {
-              id: 'comp-corte-sherman',
-              componentName: 'Corte (Piel)',
+              id: 'comp-packaging-sherman',
+              componentName: 'D. Packaging',
               materials: [
-                { name: 'C.F. Stead Repello Suede', cost: 24.00 },
-                { name: 'Elásticos laterales', cost: 3.00 },
-                { name: 'Tiradores', cost: 1.00 }
+                { name: 'Unit Box', cost: 1.50 },
+                { name: 'Tissue Paper', cost: 0.75 }
+              ]
+            },
+            {
+              id: 'comp-misc-sherman',
+              componentName: 'E. Miscellaneous',
+              materials: [
+                { name: 'Costos Varios', cost: 1.95 }
               ]
             }
           ]
@@ -150,19 +193,43 @@ export class PoFormComponent implements OnInit {
           freightCost: 10,
           components: [
             {
-              id: 'comp-suela-james',
-              componentName: 'Fondo y Suela',
+              id: 'comp-upper-sherman',
+              componentName: 'A. Upper',
               materials: [
-                { name: 'Suela de gamuza', cost: 5.00 },
-                { name: 'Acolchado interno', cost: 2.50 }
+                { name: 'C.F. Stead Repello Suede', cost: 24.00 }
               ]
             },
             {
-              id: 'comp-corte-james',
-              componentName: 'Corte (Piel)',
+              id: 'comp-linings-sherman',
+              componentName: 'B. Linings / Sundries',
               materials: [
-                { name: 'Waxy Pull-up Leather', cost: 15.00 },
-                { name: 'Ribete', cost: 1.50 }
+                { name: 'Elásticos laterales', cost: 3.00 },
+                { name: 'Tiradores', cost: 1.00 },
+                { name: 'Linings', cost: 2.50 }
+              ]
+            },
+            {
+              id: 'comp-bottom-sherman',
+              componentName: 'C. Bottom Unit',
+              materials: [
+                { name: 'Vibram Outsole', cost: 12.50 },
+                { name: 'Entresuela', cost: 7.50 },
+                { name: 'Welt', cost: 3.00 }
+              ]
+            },
+            {
+              id: 'comp-packaging-sherman',
+              componentName: 'D. Packaging',
+              materials: [
+                { name: 'Unit Box', cost: 1.50 },
+                { name: 'Tissue Paper', cost: 0.75 }
+              ]
+            },
+            {
+              id: 'comp-misc-sherman',
+              componentName: 'E. Miscellaneous',
+              materials: [
+                { name: 'Costos Varios', cost: 1.95 }
               ]
             }
           ]
@@ -235,16 +302,20 @@ export class PoFormComponent implements OnInit {
   }
 
   // ==========================================
-  // CONVERTIDOR DE DIVISAS (Solo Landing Price)
+  // CONVERTIDOR DE DIVISAS GLOBAL
   // ==========================================
 
-  
+  // 1. Convierte de USD a la moneda seleccionada (Para MOSTRAR en pantalla)
+  getConvertedValue(usdValue: number, currency?: string): number {
+    const rate = this.exchangeRates[currency || 'USD'] || 1;
+    return usdValue * rate;
+  }
 
-  // Calcula el Landing Price y lo multiplica por la tasa de cambio
-  getConvertedLandingPrice(category: ProductCategory, style: ProductStyle): number {
-    const usdPrice = this.getLandingPrice(category, style);
-    const currency = category.selectedCurrency || 'USD';
-    return usdPrice * this.exchangeRates[currency];
+  // 2. Convierte la moneda seleccionada de vuelta a USD (Para GUARDAR cuando el usuario edita)
+  setUsdFromConverted(convertedValue: number, currency?: string): number {
+    if (convertedValue === null || convertedValue === undefined) return 0;
+    const rate = this.exchangeRates[currency || 'USD'] || 1;
+    return convertedValue / rate;
   }
 
   // Devuelve el símbolo correcto para la vista
@@ -286,6 +357,166 @@ export class PoFormComponent implements OnInit {
       this.modalData.currentIndex = (this.modalData.currentIndex - 1 + len) % len;
       const key = this.modalData.categoryName + '-' + this.modalData.style.styleName;
       this.activeImageIndices[key] = this.modalData.currentIndex;
+    }
+  }
+
+  // ==========================================
+  // IMPORTACIÓN Y EXPORTACIÓN DE CSV
+  // ==========================================
+
+  // 1. Generar y descargar la plantilla de ejemplo
+  descargarPlantillaCSV() {
+    const encabezados = "Shoe_Name,Taxes_%,Freight_$,Component_Category,Material_Name,Material_Cost\n";
+    const filaEjemplo1 = "Ernest Cap Toe Boot,12,15,A. Upper,Portland Black 1.1-1.3,11.22\n";
+    const filaEjemplo2 = "Ernest Cap Toe Boot,12,15,B. Linings / Sundries,Footbed,0.90\n";
+    const filaEjemplo3 = "Ernest Cap Toe Boot,12,15,C. Bottom Unit,Leather Sole H-Verde,5.10\n";
+    const filaEjemplo4 = "Ernest Cap Toe Boot,12,15,D. Packaging,Unit box,1.50\n";
+    const filaEjemplo5 = "Ernest Cap Toe Boot,12,15,E. Miscellaneous,Otros,1.20\n";
+
+    const filaEjemplo6 = "Palomo Loafer,12,15,A. Upper,Portland Black 1.1-1.3,11.22\n";
+    const filaEjemplo7 = "Palomo Loafer,12,15,B. Linings / Sundries,Footbed,0.90\n";
+    const filaEjemplo8 = "Palomo Loafer,12,15,C. Bottom Unit,Leather Sole H-Verde,5.10\n";
+    const filaEjemplo9 = "Palomo Loafer,12,15,D. Packaging,Unit box,1.50\n";
+    const filaEjemplo10 = "Palomo Loafer,12,15,E. Miscellaneous,Otros,1.20\n";
+
+    const contenidoCSV = encabezados + filaEjemplo1 + filaEjemplo2 + filaEjemplo3 + filaEjemplo4 + filaEjemplo5 + filaEjemplo6 + filaEjemplo7 + filaEjemplo8 + filaEjemplo9 + filaEjemplo10;
+
+    // Crear un Blob y forzar la descarga en el navegador
+    const blob = new Blob([contenidoCSV], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "Plantilla_Costos_Palomo.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  // 2. Leer el archivo cuando el usuario lo selecciona
+  onArchivoSeleccionado(event: any) {
+    const archivo = event.target.files[0];
+    if (archivo) {
+      Papa.parse(archivo, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (resultados) => {
+          this.procesarDatosCSV(resultados.data);
+          // Opcional: Resetear el input para poder subir el mismo archivo modificado
+          event.target.value = '';
+        },
+        error: (error) => {
+          console.error("Error leyendo el CSV:", error);
+          alert("Hubo un error leyendo el archivo CSV.");
+        }
+      });
+    }
+  }
+
+  // 3. Transformar las filas planas del Excel a la estructura anidada de Angular
+  procesarDatosCSV(filas: any[]) {
+    const zapatosAgrupados: { [nombre: string]: ProductStyle } = {};
+
+    filas.forEach(fila => {
+      const nombreZapato = fila['Shoe_Name']?.trim();
+      if (!nombreZapato) return;
+
+      // Si el zapato no existe aún, lo creamos con las 5 categorías por defecto
+      if (!zapatosAgrupados[nombreZapato]) {
+        zapatosAgrupados[nombreZapato] = {
+          styleName: nombreZapato,
+          description: 'Importado desde CSV',
+          gallery: [], // Sin fotos por defecto al importar
+          taxesPercent: parseFloat(fila['Taxes_%']) || 12,
+          freightCost: parseFloat(fila['Freight_$']) || 15,
+          components: [
+            { id: 'comp-upper', componentName: 'A. Upper', materials: [] },
+            { id: 'comp-linings', componentName: 'B. Linings / Sundries', materials: [] },
+            { id: 'comp-bottom', componentName: 'C. Bottom Unit', materials: [] },
+            { id: 'comp-packaging', componentName: 'D. Packaging', materials: [] },
+            { id: 'comp-misc', componentName: 'E. Miscellaneous', materials: [] }
+          ]
+        };
+      }
+
+      // Buscar en qué pestaña (categoría) va este material
+      const categoriaDestino = zapatosAgrupados[nombreZapato].components.find(
+        c => c.componentName === fila['Component_Category']?.trim()
+      );
+
+      // Inyectar el material si existe
+      if (categoriaDestino && fila['Material_Name']) {
+        categoriaDestino.materials.push({
+          name: fila['Material_Name'].trim(),
+          cost: parseFloat(fila['Material_Cost']) || 0
+        });
+      }
+    });
+
+    // Extraer los zapatos creados y empujarlos a la categoría principal "Calculadora de Costos"
+    const nuevosZapatos = Object.values(zapatosAgrupados);
+    
+    // Suponiendo que la calculadora es la primera categoría (índice 0)
+    if (this.categories.length > 0) {
+      this.categories[0].styles = [...this.categories[0].styles, ...nuevosZapatos];
+      alert(`¡Se importaron ${nuevosZapatos.length} estilos correctamente!`);
+      this.cdr.detectChanges();
+    }
+  }
+
+  // ==========================================
+  // AGREGAR MATERIALES
+  // ==========================================
+
+  agregarMaterial(componente: ShoeComponent) {
+    componente.materials.push({ name: 'Nuevo Material', cost: 0 });
+  }
+
+  // ==========================================
+  // MODAL DE VARIANTES (FOTOS Y COLORES)
+  // ==========================================
+
+  isVariantsModalOpen = false;
+  activeStyleForVariants: ProductStyle | null = null;
+
+  abrirModalVariantes(style: ProductStyle) {
+    this.activeStyleForVariants = style;
+    this.isVariantsModalOpen = true;
+  }
+
+  cerrarModalVariantes() {
+    this.isVariantsModalOpen = false;
+    this.activeStyleForVariants = null;
+  }
+
+  agregarVariante() {
+    if (this.activeStyleForVariants) {
+      this.activeStyleForVariants.gallery.push({ colorName: 'Nuevo Color', imageUrl: '' });
+    }
+  }
+
+  eliminarVariante(index: number) {
+    if (this.activeStyleForVariants) {
+      this.activeStyleForVariants.gallery.splice(index, 1);
+      
+      // Ajustar el índice del carrusel por si eliminamos la foto que estamos viendo
+      if (this.activeStyleForVariants.gallery.length === 0) {
+        // No hacer nada, se queda vacío
+      } else if (index === 0) {
+        // Se resetea al primer elemento
+      }
+    }
+  }
+
+  onImagenSeleccionada(event: any, variante: any) {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e: any) => {
+        // e.target.result contiene la imagen convertida a texto Base64
+        variante.imageUrl = e.target.result;
+        this.cdr.detectChanges(); 
+      };
+      reader.readAsDataURL(file);
     }
   }
 }
