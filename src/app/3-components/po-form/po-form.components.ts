@@ -5,6 +5,8 @@ import { ProductCategory, ProductStyle, ShoeComponent } from '../../1-models/po.
 import { HttpClient } from '@angular/common/http';
 import { HttpClientModule } from '@angular/common/http';
 import * as Papa from 'papaparse';
+import { createClient } from '@supabase/supabase-js';
+import { environment } from '../../../environments/environment.development';
 
 @Component({
   selector: 'app-po-form',
@@ -28,7 +30,7 @@ export class PoFormComponent implements OnInit {
   activeImageIndices: { [key: string]: number } = {};
   activeTabIndices: { [key: string]: number } = {};
 
-  ngOnInit() {
+  async ngOnInit() {
     console.log(
       "%c🚀 Cost Calculator Built with Angular by Rodrigo Ávila\n%cLet's connect: https://eldonchambas.github.io/PersonalWebsiteEnglishRodrigoAvila/",
       "font-size: 14px; font-weight: bold; color: #FFFFFF;",
@@ -36,6 +38,7 @@ export class PoFormComponent implements OnInit {
     );
 
     this.obtenerTasasDeCambio();
+    await this.cargarEstilosDesdeBD();
   }
   
   obtenerTasasDeCambio() {
@@ -517,6 +520,103 @@ export class PoFormComponent implements OnInit {
         this.cdr.detectChanges(); 
       };
       reader.readAsDataURL(file);
+    }
+  }
+
+  // Inicializar Supabase
+  supabase = createClient(environment.supabaseUrl, environment.supabaseKey);
+
+  // ==========================================
+  // AGREGAR PRODUCTOS
+  // ==========================================
+  
+  agregarEstilo(categoria: ProductCategory) {
+    const nuevoEstilo: ProductStyle = {
+      styleName: 'Nuevo Estilo',
+      description: 'Descripción del zapato...',
+      taxesPercent: 12,
+      freightCost: 15,
+      gallery: [],
+      components: [
+        { id: 'comp-upper', componentName: 'A. Upper', materials: [] },
+        { id: 'comp-linings', componentName: 'B. Linings / Sundries', materials: [] },
+        { id: 'comp-bottom', componentName: 'C. Bottom Unit', materials: [] },
+        { id: 'comp-packaging', componentName: 'D. Packaging', materials: [] },
+        { id: 'comp-misc', componentName: 'E. Miscellaneous', materials: [] }
+      ]
+    };
+    categoria.styles.push(nuevoEstilo);
+    this.cdr.detectChanges(); // Forzamos actualización visual
+  }
+
+  // ==========================================
+  // GUARDAR PRODUCTOS EN SUPABASE
+  // ==========================================
+    async guardarEstilo(categoria: ProductCategory, estilo: ProductStyle) {
+    try {
+      // Si no tiene ID, lo creamos basándonos en el nombre (ej: "Edmund Plain Toe" -> "edmund-plain-toe")
+      if (!estilo.id) {
+        estilo.id = estilo.styleName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      }
+
+      const { data, error } = await this.supabase
+        .from('styles')
+        .upsert({
+          id: estilo.id, 
+          category_name: categoria.categoryName,
+          style_name: estilo.styleName,
+          description: estilo.description,
+          taxes_percent: estilo.taxesPercent,
+          freight_cost: estilo.freightCost,
+          gallery: estilo.gallery,
+          components: estilo.components
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      // Apagamos el botón porque ya se guardó
+      estilo.hasChanges = false;
+      this.cdr.detectChanges();
+      alert(`¡Estilo "${estilo.styleName}" guardado con éxito!`);
+    } catch (error) {
+      console.error('Error al guardar:', error);
+    }
+  }
+
+    // ==========================================
+    // CARGAR PRODUCTOS DE SUPABASE
+    // ==========================================
+    async cargarEstilosDesdeBD() {
+    try {
+      const { data, error } = await this.supabase
+        .from('styles')
+        .select('*');
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        // Mapeamos los datos de la BD (snake_case) a tu Interfaz (camelCase)
+        const estilosRecuperados: ProductStyle[] = data.map((item: any) => ({
+          id: item.id,
+          hasChanges: false,
+          styleName: item.style_name,
+          description: item.description,
+          taxesPercent: item.taxes_percent,
+          freightCost: item.freight_cost,
+          gallery: item.gallery,
+          components: item.components
+        }));
+
+        // Asignamos los estilos a la primera categoría (puedes ajustar esto luego si hay más categorías)
+        if (this.categories.length > 0) {
+          this.categories[0].styles = estilosRecuperados;
+        }
+        this.cdr.detectChanges();
+      }
+    } catch (error) {
+      console.error('Error cargando estilos:', error);
     }
   }
 }

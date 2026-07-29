@@ -85,14 +85,20 @@
         <div *ngFor="let style of category.styles" class="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
           
           <!-- PANEL SUPERIOR: TÍTULO Y CALCULADORA FINANCIERA -->
-          <!-- PANEL SUPERIOR: TÍTULO Y CALCULADORA FINANCIERA -->
           <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center border-b border-gray-200 pb-4 mb-5 gap-4">
-            <div>
-              <h3 class="text-2xl font-bold text-gray-800 mb-1">{{ style.styleName }}</h3>
-              <p *ngIf="style.description" class="text-xs text-gray-500 italic max-w-md">{{ style.description }}</p>
+            
+            <!-- Sección Editable del Título -->
+            <div class="flex-1 w-full xl:w-auto">
+              <input type="text" [(ngModel)]="style.styleName" 
+                    class="text-2xl font-bold text-gray-800 mb-1 bg-transparent border-b border-transparent hover:border-gray-300 focus:border-[#294337] outline-none w-full transition-colors"
+                    placeholder="Nombre del Estilo">
+              
+              <input type="text" [(ngModel)]="style.description" 
+                    class="text-xs text-gray-500 italic max-w-md bg-transparent border-b border-transparent hover:border-gray-300 focus:border-[#294337] outline-none w-full transition-colors"
+                    placeholder="Descripción de la construcción...">
             </div>
             
-            <!-- RESUMEN FINANCIERO -->
+            <!-- RESUMEN FINANCIERO (Mantén tu código actual aquí) -->
             <div class="flex flex-wrap gap-2 items-center bg-gray-50 p-2.5 rounded-lg border border-gray-200 shadow-inner">
               
               <!-- Costo Duramas (Convertido) -->
@@ -115,7 +121,7 @@
               <div class="flex items-center gap-2 px-2">
                 <div class="flex flex-col">
                   <label class="text-[9px] font-bold text-gray-500 uppercase tracking-wide mb-1 text-center">Taxes (%)</label>
-                  <input type="number" step="0.1" [(ngModel)]="style.taxesPercent" class="w-14 p-1 text-sm font-bold border border-gray-300 rounded focus:ring-1 focus:ring-[#294337] outline-none text-center bg-white shadow-sm">
+                  <input type="number" step="0.1" [(ngModel)]="style.taxesPercent" (ngModelChange)="style.hasChanges = true" class="w-14 p-1 text-sm font-bold border border-gray-300 rounded focus:ring-1 focus:ring-[#294337] outline-none text-center bg-white shadow-sm">
                 </div>
                 <span class="text-gray-300 font-bold text-lg">+</span>
                 <div class="flex flex-col">
@@ -124,7 +130,7 @@
                   <!-- Input de Flete con conversión de 2 vías -->
                   <input type="number" step="1" 
                          [ngModel]="getConvertedValue(style.freightCost, category.selectedCurrency)"
-                         (ngModelChange)="style.freightCost = setUsdFromConverted($event, category.selectedCurrency)"
+                         (ngModelChange)="style.freightCost = setUsdFromConverted($event, category.selectedCurrency)" (ngModelChange)="style.hasChanges = true"
                          class="w-16 p-1 text-sm font-bold border border-gray-300 rounded focus:ring-1 focus:ring-[#294337] outline-none text-center bg-white shadow-sm">
                 </div>
               </div>
@@ -185,6 +191,7 @@
                   </span>
                 </button>
               </div>
+              
 
               <!-- Lista de Materiales Modificables -->
               <div class="bg-gray-50 border border-gray-200 rounded-md p-4 flex-1">
@@ -205,6 +212,7 @@
                         
                         <!-- Nombre del material Editable -->
                         <textarea [(ngModel)]="material.name" 
+                                  (ngModelChange)="style.hasChanges = true"
                                   rows="2"
                                   class="text-xs font-bold text-gray-700 leading-tight bg-transparent outline-none flex-1 w-full border-b border-transparent focus:border-gray-300 resize-none overflow-hidden"
                                   placeholder="Nombre material"></textarea>
@@ -215,15 +223,27 @@
                           <input type="number" step="0.01" 
                                  [ngModel]="getConvertedValue(material.cost, category.selectedCurrency)"
                                  (ngModelChange)="material.cost = setUsdFromConverted($event, category.selectedCurrency)"
+                                 (ngModelChange)="style.hasChanges = true"
                                  class="w-16 text-sm font-bold text-right bg-transparent outline-none text-[#294337]">
                         </div>
                       </div>
 
                       <!-- Botón Agregar Material -->
-                      <button (click)="agregarMaterial(comp)" class="flex items-center justify-center bg-gray-50 border-2 border-dashed border-gray-300 rounded p-2.5 hover:border-[#294337] hover:text-[#294337] hover:bg-gray-100 transition-colors text-gray-400 min-h-[46px]">
+                      <button (click)="agregarMaterial(comp); style.hasChanges = true" class="flex items-center justify-center bg-gray-50 border-2 border-dashed border-gray-300 rounded p-2.5 hover:border-[#294337] hover:text-[#294337] hover:bg-gray-100 transition-colors text-gray-400 min-h-[46px]">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
                           <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                         </svg>
+                      </button>
+                    </div>
+
+                    <!-- NUEVO BOTÓN DE GUARDAR EN BD -->
+                    <div class="mt-6 flex justify-end" *ngIf="style.hasChanges">
+                      <button (click)="guardarEstilo(category, style)" 
+                              class="flex items-center gap-2 bg-[#294337] text-white text-xs font-bold px-6 py-3 rounded shadow-md hover:bg-[#1e3229] transition-all transform hover:scale-105 hover:-translate-y-0.5">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                        </svg>
+                        GUARDAR CAMBIOS
                       </button>
                     </div>
 
@@ -236,6 +256,15 @@
 
         </div>
       </div>
+
+      <button (click)="agregarEstilo(category)" 
+              class="w-full mt-4 flex items-center justify-center gap-2 bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-[#294337] hover:text-[#294337] transition-colors text-gray-500 font-bold">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+        </svg>
+        AGREGAR NUEVO ESTILO A {{ category.categoryName }}
+      </button>
+      
     </div>
   </div>
 
@@ -321,7 +350,7 @@
             
             <!-- COLUMNA 2: NOMBRE DEL COLOR -->
             <td class="p-4">
-              <input type="text" [(ngModel)]="variante.colorName" placeholder="Ej: Black Suede" 
+              <input type="text" [(ngModel)]="variante.colorName" placeholder="Ej: Black Suede" (ngModelChange)="activeStyleForVariants.hasChanges = true"
                      class="w-full p-2.5 border border-gray-300 rounded text-sm font-bold text-gray-700 focus:ring-2 focus:ring-[#294337] outline-none transition-shadow shadow-sm">
             </td>
             
@@ -336,20 +365,20 @@
                   </svg>
                   Subir Foto
                   <!-- Input nativo oculto -->
-                  <input type="file" accept="image/*" class="hidden" (change)="onImagenSeleccionada($event, variante)">
+                  <input type="file" accept="image/*" class="hidden" (change)="onImagenSeleccionada($event, variante); activeStyleForVariants.hasChanges = true">
                 </label>
                 
                 <span class="text-xs font-bold text-gray-400 hidden xl:block">- o -</span>
                 
                 <!-- Input para URL alternativa -->
-                <input type="text" [(ngModel)]="variante.imageUrl" placeholder="Pegar URL externa..." 
+                <input type="text" [(ngModel)]="variante.imageUrl" placeholder="Pegar URL externa..." (ngModelChange)="activeStyleForVariants.hasChanges = true"
                        class="w-full p-2.5 border border-gray-300 rounded text-xs text-gray-600 focus:ring-2 focus:ring-[#294337] outline-none transition-shadow font-mono shadow-sm">
               </div>
             </td>
             
             <!-- COLUMNA 4: BOTÓN ELIMINAR -->
             <td class="p-4 text-center">
-              <button (click)="eliminarVariante(i)" class="text-gray-400 hover:text-red-600 bg-white hover:bg-red-50 border border-gray-200 hover:border-red-200 rounded p-2.5 transition-all shadow-sm">
+              <button (click)="eliminarVariante(i); activeStyleForVariants.hasChanges = true" class="text-gray-400 hover:text-red-600 bg-white hover:bg-red-50 border border-gray-200 hover:border-red-200 rounded p-2.5 transition-all shadow-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
                 </svg>
@@ -371,7 +400,7 @@
     
     <!-- Footer del Modal -->
     <div class="p-5 border-t border-gray-200 bg-gray-50 flex justify-between items-center">
-      <button (click)="agregarVariante()" class="flex items-center gap-2 text-sm font-bold text-[#294337] bg-[#294337]/10 px-4 py-2.5 rounded hover:bg-[#294337]/20 transition-colors">
+      <button (click)="agregarVariante(); activeStyleForVariants.hasChanges = true" class="flex items-center gap-2 text-sm font-bold text-[#294337] bg-[#294337]/10 px-4 py-2.5 rounded hover:bg-[#294337]/20 transition-colors">
          <span class="text-lg leading-none mb-0.5">+</span> Agregar Fila
       </button>
       <button (click)="cerrarModalVariantes()" class="bg-[#294337] text-white px-8 py-2.5 rounded hover:bg-gray-800 transition-colors font-bold text-sm shadow-md">
