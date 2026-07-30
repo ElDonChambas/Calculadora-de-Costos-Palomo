@@ -17,15 +17,5 @@ export class AppComponent implements OnInit {
 
   async ngOnInit() {
     console.log('Variables de entorno:', environment);
-    
-    const { data, error } = await this.supabase
-      .from('test_connection')
-      .select('*');
-
-    if (error) {
-      console.error('Error al conectar con Supabase:', error);
-    } else {
-      console.log('¡Conexión exitosa! Aquí están tus productos:', data);
-    }
   }
 }

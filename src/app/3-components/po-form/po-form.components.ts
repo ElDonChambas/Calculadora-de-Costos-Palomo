@@ -510,16 +510,40 @@ export class PoFormComponent implements OnInit {
     }
   }
 
-  onImagenSeleccionada(event: any, variante: any) {
+  async onImagenSeleccionada(event: any, variante: any) {
     const file = event.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e: any) => {
-        // e.target.result contiene la imagen convertida a texto Base64
-        variante.imageUrl = e.target.result;
-        this.cdr.detectChanges(); 
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    try {
+      // 1. Crear un nombre único para la imagen (para que no se sobreescriban)
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `variantes/${fileName}`; // Se guardará en la carpeta "variantes" dentro del bucket
+
+      // 2. Subir el archivo físico a Supabase Storage
+      const { data, error } = await this.supabase.storage
+        .from('zapatos_imagenes') // El nombre del bucket que acabas de crear
+        .upload(filePath, file);
+
+      if (error) throw error;
+
+      // 3. Obtener la URL pública de la imagen recién subida
+      const { data: { publicUrl } } = this.supabase.storage
+        .from('zapatos_imagenes')
+        .getPublicUrl(filePath);
+
+      // 4. Asignar esa URL corta a la variante y encender el botón de guardado
+      variante.imageUrl = publicUrl;
+      
+      if (this.activeStyleForVariants) {
+        this.activeStyleForVariants.hasChanges = true;
+      }
+      
+      this.cdr.detectChanges(); // Actualizar la pantalla
+
+    } catch (error) {
+      console.error('Error al subir la imagen a Supabase:', error);
+      alert('Hubo un error subiendo la imagen. Revisa la consola.');
     }
   }
 

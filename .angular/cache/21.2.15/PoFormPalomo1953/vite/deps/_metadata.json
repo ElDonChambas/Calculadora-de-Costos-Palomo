@@ -1,55 +1,55 @@
 {
-  "hash": "50081485",
-  "configHash": "7a21f9f1",
-  "lockfileHash": "60410732",
-  "browserHash": "de814c21",
+  "hash": "17df47d7",
+  "configHash": "ad6ec584",
+  "lockfileHash": "455c3f06",
+  "browserHash": "2e569a62",
   "optimized": {
     "@angular/common": {
       "src": "../../../../../../node_modules/@angular/common/fesm2022/common.mjs",
       "file": "@angular_common.js",
-      "fileHash": "1126a7f8",
+      "fileHash": "ce5dc7f4",
       "needsInterop": false
     },
     "@angular/common/http": {
       "src": "../../../../../../node_modules/@angular/common/fesm2022/http.mjs",
       "file": "@angular_common_http.js",
-      "fileHash": "3d8386ca",
+      "fileHash": "753eae61",
       "needsInterop": false
     },
     "@angular/core": {
       "src": "../../../../../../node_modules/@angular/core/fesm2022/core.mjs",
       "file": "@angular_core.js",
-      "fileHash": "324ab9ea",
+      "fileHash": "79b372a8",
       "needsInterop": false
     },
     "@angular/forms": {
       "src": "../../../../../../node_modules/@angular/forms/fesm2022/forms.mjs",
       "file": "@angular_forms.js",
-      "fileHash": "2f725710",
+      "fileHash": "ea67feb6",
       "needsInterop": false
     },
     "@angular/platform-browser": {
       "src": "../../../../../../node_modules/@angular/platform-browser/fesm2022/platform-browser.mjs",
       "file": "@angular_platform-browser.js",
-      "fileHash": "72434842",
+      "fileHash": "568405cd",
       "needsInterop": false
     },
     "@angular/router": {
       "src": "../../../../../../node_modules/@angular/router/fesm2022/router.mjs",
       "file": "@angular_router.js",
-      "fileHash": "ebbc6988",
+      "fileHash": "e2794b02",
       "needsInterop": false
     },
     "@supabase/supabase-js": {
       "src": "../../../../../../node_modules/@supabase/supabase-js/dist/index.mjs",
       "file": "@supabase_supabase-js.js",
-      "fileHash": "7a4f6eb3",
+      "fileHash": "a8b8c676",
       "needsInterop": false
     },
     "papaparse": {
       "src": "../../../../../../node_modules/papaparse/papaparse.min.js",
       "file": "papaparse.js",
-      "fileHash": "acd776b2",
+      "fileHash": "176cbd24",
       "needsInterop": true
     }
   },

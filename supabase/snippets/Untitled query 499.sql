@@ -1,14 +1,6 @@
-DROP TABLE public.styles;
-
-CREATE TABLE public.styles (
-    id text PRIMARY KEY, -- AHORA ES TEXTO
-    style_name text NOT NULL,
-    description text,
-    taxes_percent numeric DEFAULT 12,
-    freight_cost numeric DEFAULT 15,
-    gallery jsonb DEFAULT '[]'::jsonb,
-    components jsonb DEFAULT '[]'::jsonb,
-    category_name text
-);
-
-GRANT ALL ON public.styles TO anon;
+-- Permitir que cualquier usuario (incluso anónimos) pueda subir, ver y editar imágenes en este bucket
+CREATE POLICY "Permitir acceso total a zapatos_imagenes"
+ON storage.objects FOR ALL
+TO public
+USING (bucket_id = 'zapatos_imagenes')
+WITH CHECK (bucket_id = 'zapatos_imagenes');
