@@ -13,6 +13,7 @@ export interface ShoeComponent {
 export interface ProductStyle {
   id?: string;
   hasChanges?: boolean;
+  isHidden?: boolean;
   styleName: string;
   description?: string;
   taxesPercent: number;  // % de impuestos (editable)

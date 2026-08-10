@@ -1,0 +1,1 @@
+GRANT ALL ON public.styles TO authenticated;

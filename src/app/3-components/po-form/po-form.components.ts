@@ -30,6 +30,14 @@ export class PoFormComponent implements OnInit {
   activeImageIndices: { [key: string]: number } = {};
   activeTabIndices: { [key: string]: number } = {};
 
+  // ==========================================
+  // VARIABLES DE AUTENTICACIÓN
+  // ==========================================
+  isLoginModalOpen = false;
+  loginData = { username: '', password: '' };
+  currentUser: any = null;
+  currentRole: string = 'invitado'; // Por defecto, todos son invitados
+
   async ngOnInit() {
     console.log(
       "%c🚀 Cost Calculator Built with Angular by Rodrigo Ávila\n%cLet's connect: https://eldonchambas.github.io/PersonalWebsiteEnglishRodrigoAvila/",
@@ -38,7 +46,86 @@ export class PoFormComponent implements OnInit {
     );
 
     this.obtenerTasasDeCambio();
+    await this.checkSession();
     await this.cargarEstilosDesdeBD();
+  }
+
+  // ==========================================
+  // MÉTODOS DE LOGIN Y ROLES
+  // ==========================================
+
+  // 1. Revisar si la sesión sigue activa
+  async checkSession() {
+    const { data: { session } } = await this.supabase.auth.getSession();
+    if (session) {
+      this.currentUser = session.user;
+      await this.fetchUserRole(session.user.id);
+    }
+  }
+
+  // 2. Buscar qué rol tiene el usuario en nuestra tabla
+  async fetchUserRole(userId: string) {
+    const { data, error } = await this.supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId)
+      .single();
+
+    if (error) {
+      console.error('Error de permisos al buscar rol:', error);
+    }
+
+    if (data) {
+      this.currentRole = data.role;
+    }
+    this.cdr.detectChanges();
+  }
+
+  // 3. Iniciar sesión (Inteligente: Acepta correos reales y usernames)
+  async iniciarSesion() {
+    if (!this.loginData.username || !this.loginData.password) return;
+
+    // Limpiamos espacios y pasamos a minúsculas por si acaso
+    let finalEmail = this.loginData.username.trim().toLowerCase();
+
+    // Si NO tiene un '@', le ponemos el dominio fantasma de Palomo
+    if (!finalEmail.includes('@')) {
+      finalEmail = `${finalEmail}@palomo.local`;
+    }
+    
+    try {
+      const { data, error } = await this.supabase.auth.signInWithPassword({
+        email: finalEmail, // Usamos la variable que acabamos de procesar
+        password: this.loginData.password
+      });
+
+      if (error) throw error;
+
+      this.currentUser = data.user;
+      await this.fetchUserRole(data.user.id);
+      
+      this.isLoginModalOpen = false; 
+      this.loginData = { username: '', password: '' }; 
+
+      await this.cargarEstilosDesdeBD();
+
+      this.cdr.detectChanges();
+      
+      alert(`¡Bienvenido! Rol activo: ${this.currentRole.toUpperCase()}`);
+      
+    } catch (error) {
+      console.error('Error de login:', error);
+      alert('Credenciales incorrectas. Intenta de nuevo.');
+    }
+  }
+
+  // 4. Cerrar sesión
+  async cerrarSesion() {
+    await this.supabase.auth.signOut();
+    this.currentUser = null;
+    this.currentRole = 'invitado';
+    await this.cargarEstilosDesdeBD();
+    this.cdr.detectChanges();
   }
   
   obtenerTasasDeCambio() {
@@ -612,19 +699,24 @@ export class PoFormComponent implements OnInit {
     // ==========================================
     // CARGAR PRODUCTOS DE SUPABASE
     // ==========================================
-    async cargarEstilosDesdeBD() {
+  async cargarEstilosDesdeBD() {
     try {
-      const { data, error } = await this.supabase
-        .from('styles')
-        .select('*');
+      // Preparamos la consulta
+      let query = this.supabase.from('styles').select('*');
 
+      // 🛑 REGLA DE ORO: Si no es el admin, ocultamos los archivados desde la raíz
+      if (!['admin', 'operador'].includes(this.currentRole)) {
+        query = query.eq('is_hidden', false);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
 
       if (data && data.length > 0) {
-        // Mapeamos los datos de la BD (snake_case) a tu Interfaz (camelCase)
         const estilosRecuperados: ProductStyle[] = data.map((item: any) => ({
           id: item.id,
           hasChanges: false,
+          isHidden: item.is_hidden, // <-- Mapeamos el estado de la BD
           styleName: item.style_name,
           description: item.description,
           taxesPercent: item.taxes_percent,
@@ -633,7 +725,6 @@ export class PoFormComponent implements OnInit {
           components: item.components
         }));
 
-        // Asignamos los estilos a la primera categoría (puedes ajustar esto luego si hay más categorías)
         if (this.categories.length > 0) {
           this.categories[0].styles = estilosRecuperados;
         }
@@ -641,6 +732,113 @@ export class PoFormComponent implements OnInit {
       }
     } catch (error) {
       console.error('Error cargando estilos:', error);
+    }
+  }
+  
+  // Función exclusiva para el rol 'cliente' (REP)
+  async guardarPreset(estilo: ProductStyle) {
+    if (!this.currentUser) return;
+    
+    try {
+      const { error } = await this.supabase
+        .from('presets')
+        .insert({
+          style_id: estilo.id,
+          nombre_preset: `Proyección - ${new Date().toLocaleDateString()}`,
+          creado_por: this.currentUser.id,
+          datos_modificados: estilo // Guardamos toda su versión alterada del zapato
+        });
+
+      if (error) throw error;
+      
+      // Apagamos el botón y notificamos
+      estilo.hasChanges = false;
+      this.cdr.detectChanges();
+      alert('¡Proyección guardada con éxito! El equipo revisará tus números.');
+      
+    } catch (error) {
+      console.error('Error guardando la proyección:', error);
+      alert('Hubo un error al guardar la proyección.');
+    }
+  }
+
+  // ==========================================
+  // FUNCIONES DE ELIMINACIÓN Y OCULTAMIENTO
+  // ==========================================
+
+  // 1. Soft Delete (Ocultar)
+  async ocultarEstilo(categoria: ProductCategory, estilo: ProductStyle, index: number) {
+    const confirmar = confirm(`¿Estás seguro de que quieres archivar/ocultar "${estilo.styleName}"?`);
+    if (!confirmar) return;
+
+    try {
+      // Si el estilo es nuevo y ni siquiera se ha guardado en BD, solo lo quitamos localmente
+      if (!estilo.id) {
+        categoria.styles.splice(index, 1);
+        return;
+      }
+
+      const { error } = await this.supabase
+        .from('styles')
+        .update({ is_hidden: true })
+        .eq('id', estilo.id);
+
+      if (error) throw error;
+
+      if (this.currentRole === 'admin') {
+        // Al Admin solo se le pone la etiqueta visual
+        estilo.isHidden = true;
+      } else {
+        // A los Operadores se les desaparece inmediatamente de la vista
+        categoria.styles.splice(index, 1);
+      }
+      
+      this.cdr.detectChanges();
+    } catch (error) {
+      console.error('Error al ocultar:', error);
+      alert('Hubo un error al ocultar el producto.');
+    }
+  }
+
+  // 2. Hard Delete (Borrado definitivo - Solo Admin)
+  async eliminarDefinitivo(categoria: ProductCategory, estilo: ProductStyle, index: number) {
+    const confirmar = confirm(`🛑 CUIDADO: ¿Borrar DEFINITIVAMENTE "${estilo.styleName}"? Esta acción destruirá los datos y no se puede deshacer.`);
+    if (!confirmar) return;
+
+    try {
+      const { error } = await this.supabase
+        .from('styles')
+        .delete()
+        .eq('id', estilo.id);
+
+      if (error) throw error;
+
+      // Lo borramos de la vista para el Admin
+      categoria.styles.splice(index, 1);
+      this.cdr.detectChanges();
+      
+    } catch (error) {
+      console.error('Error al borrar definitivamente:', error);
+    }
+  }
+
+  // 3. Restaurar / Volver a mostrar (Admin y Operadores)
+  async restaurarEstilo(estilo: ProductStyle) {
+    try {
+      const { error } = await this.supabase
+        .from('styles')
+        .update({ is_hidden: false })
+        .eq('id', estilo.id);
+
+      if (error) throw error;
+
+      // Quitamos la etiqueta roja visualmente
+      estilo.isHidden = false;
+      this.cdr.detectChanges();
+      
+    } catch (error) {
+      console.error('Error al restaurar:', error);
+      alert('Hubo un error al intentar restaurar el producto.');
     }
   }
 }

@@ -1,13 +1,36 @@
 <div class="max-w-5xl mx-auto p-4 bg-white min-h-screen">
   
-  <div class="text-center mb-8 border-b pb-4">
-    <img src="logo/logo.png" alt="Palomo 1953 Logo" class="mx-auto mb-4 object-contain h-16">
-    <h1 class="text-2xl font-bold text-gray-800">Production Cost & Landing Price Calculator</h1>
-    <p class="text-gray-500 mt-2">Plataforma interna para el cálculo y proyección de costos.</p>
+  <div class="flex flex-col sm:flex-row justify-between items-center mb-8 border-b pb-4 gap-4">
+    <div class="flex-1"></div> <!-- Espaciador para centrar el logo -->
+    
+    <div class="text-center flex-1">
+      <img src="logo/logo.png" alt="Palomo 1953 Logo" class="mx-auto mb-4 object-contain h-16">
+      <h1 class="text-2xl font-bold text-gray-800">Production Cost & Landing Price</h1>
+      <p class="text-gray-500 mt-2">Plataforma interna de proyección de costos</p>
+    </div>
+
+    <!-- Controles de Sesión -->
+    <div class="flex-1 flex justify-end">
+      <!-- Si NO hay usuario logueado (Vista de Invitado) -->
+      <button *ngIf="!currentUser" (click)="isLoginModalOpen = true" 
+              class="text-xs font-bold text-gray-400 hover:text-[#294337] transition-colors border border-transparent hover:border-gray-200 px-3 py-1.5 rounded">
+        Acceso Equipo
+      </button>
+
+      <!-- Si SÍ hay usuario logueado -->
+      <div *ngIf="currentUser" class="flex flex-col items-end">
+        <span class="text-xs font-bold text-[#294337] uppercase bg-[#294337]/10 px-2 py-1 rounded mb-1">
+          Rol: {{ currentRole }}
+        </span>
+        <button (click)="cerrarSesion()" class="text-[10px] font-bold text-red-400 hover:text-red-600 transition-colors">
+          Cerrar Sesión
+        </button>
+      </div>
+    </div>
   </div>
 
   <!-- BARRA DE HERRAMIENTAS DE IMPORTACIÓN (CSV) -->
-  <div class="mb-6 bg-gray-50 border border-gray-200 rounded-lg p-4 flex flex-col sm:flex-row justify-between items-center gap-4 shadow-sm">
+  <div *ngIf="['admin', 'operador'].includes(currentRole)" class="mb-6 bg-gray-50 border border-gray-200 rounded-lg p-4 flex flex-col sm:flex-row justify-between items-center gap-4 shadow-sm">
     <div class="flex items-center gap-3">
       <div class="bg-[#294337]/10 p-2 rounded-full">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="#294337" class="w-6 h-6">
@@ -82,9 +105,15 @@
 
       <div *ngIf="category.isExpanded" class="p-4 bg-gray-50 flex flex-col gap-6 border-t border-gray-300">
         
-        <div *ngFor="let style of category.styles" class="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
+        <div *ngFor="let style of category.styles; let i = index" class="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
           
           <!-- PANEL SUPERIOR: TÍTULO Y CALCULADORA FINANCIERA -->
+          <div *ngIf="style.isHidden" class="bg-red-100 text-red-800 text-[10px] font-bold px-3 py-1.5 rounded-md border border-red-200 mb-4 inline-flex items-center gap-2 shadow-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            PRODUCTO ARCHIVADO / OCULTO PARA LA VISTA DE REP.
+          </div>
           <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center border-b border-gray-200 pb-4 mb-5 gap-4">
             
             <!-- Sección Editable del Título -->
@@ -229,22 +258,54 @@
                       </div>
 
                       <!-- Botón Agregar Material -->
-                      <button (click)="agregarMaterial(comp); style.hasChanges = true" class="flex items-center justify-center bg-gray-50 border-2 border-dashed border-gray-300 rounded p-2.5 hover:border-[#294337] hover:text-[#294337] hover:bg-gray-100 transition-colors text-gray-400 min-h-[46px]">
+                      <button *ngIf="['admin', 'operador', 'cliente'].includes(currentRole)" (click)="agregarMaterial(comp); style.hasChanges = true" class="flex items-center justify-center bg-gray-50 border-2 border-dashed border-gray-300 rounded p-2.5 hover:border-[#294337] hover:text-[#294337] hover:bg-gray-100 transition-colors text-gray-400 min-h-[46px]">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
                           <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                         </svg>
                       </button>
                     </div>
 
-                    <!-- NUEVO BOTÓN DE GUARDAR EN BD -->
-                    <div class="mt-6 flex justify-end" *ngIf="style.hasChanges">
-                      <button (click)="guardarEstilo(category, style)" 
-                              class="flex items-center gap-2 bg-[#294337] text-white text-xs font-bold px-6 py-3 rounded shadow-md hover:bg-[#1e3229] transition-all transform hover:scale-105 hover:-translate-y-0.5">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                        </svg>
-                        GUARDAR CAMBIOS
-                      </button>
+                    <!-- ZONA DE ACCIONES INFERIOR (Eliminar y Guardar) -->
+                    <div class="mt-6 flex flex-col sm:flex-row justify-between items-center border-t border-gray-100 pt-5 gap-4">
+                      
+                      <!-- Lado Izquierdo: Botones de Riesgo y Restauración -->
+                      <div class="flex w-full sm:w-auto gap-2">
+                        
+                        <!-- Botón Ocultar (Solo si NO está oculto) -->
+                        <button *ngIf="['admin', 'operador'].includes(currentRole) && !style.isHidden" 
+                                (click)="ocultarEstilo(category, style, i)"
+                                class="flex-1 sm:flex-none flex items-center justify-center gap-2 text-xs font-bold text-red-400 hover:text-red-600 bg-red-50 hover:bg-red-100 px-4 py-2.5 rounded transition-colors border border-red-100 hover:border-red-200">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>
+                          OCULTAR PRODUCTO
+                        </button>
+
+                        <!-- Botón Volver a Mostrar (Admin y Operadores, solo si SÍ está oculto) -->
+                        <button *ngIf="['admin', 'operador'].includes(currentRole) && style.isHidden" 
+                                (click)="restaurarEstilo(style)"
+                                class="flex-1 sm:flex-none flex items-center justify-center gap-2 text-xs font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-4 py-2.5 rounded transition-colors border border-emerald-200 hover:border-emerald-300">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" /></svg>
+                          VOLVER A MOSTRAR
+                        </button>
+
+                        <!-- Botón Destruir (SOLO ADMIN, si ya está oculto) -->
+                        <button *ngIf="currentRole === 'admin' && style.isHidden" 
+                                (click)="eliminarDefinitivo(category, style, i)"
+                                class="flex-1 sm:flex-none flex items-center justify-center gap-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 px-4 py-2.5 rounded shadow-sm transition-colors border border-red-700">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                          ELIMINAR DEFINITIVAMENTE
+                        </button>
+                      </div>
+
+                      <!-- Lado Derecho: Botones de Guardar (Se muestran solo si hay cambios) -->
+                      <div class="flex w-full sm:w-auto" *ngIf="style.hasChanges">
+                        <button *ngIf="currentRole === 'cliente'" (click)="guardarPreset(style)" class="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#8b5a2b] text-white text-xs font-bold px-6 py-3 rounded shadow-md hover:bg-[#6b4421] transition-all transform hover:scale-105 hover:-translate-y-0.5">
+                          GUARDAR PROYECCIÓN
+                        </button>
+
+                        <button *ngIf="['admin', 'operador'].includes(currentRole)" (click)="guardarEstilo(category, style)" class="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#294337] text-white text-xs font-bold px-6 py-3 rounded shadow-md hover:bg-[#1e3229] transition-all transform hover:scale-105 hover:-translate-y-0.5">
+                          GUARDAR EN BD
+                        </button>
+                      </div>
                     </div>
 
                   </div>
@@ -408,5 +469,37 @@
       </button>
     </div>
     
+  </div>
+</div>
+
+<!-- MODAL DE LOGIN DISCRETO -->
+<div *ngIf="isLoginModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 p-4 backdrop-blur-sm" (click)="isLoginModalOpen = false">
+  <div class="relative w-full max-w-sm bg-white rounded-xl shadow-2xl flex flex-col p-6" (click)="$event.stopPropagation()">
+    
+    <button (click)="isLoginModalOpen = false" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-2xl font-bold leading-none">&times;</button>
+    
+    <div class="text-center mb-6">
+      <h2 class="text-xl font-bold text-gray-800">Acceso Restringido</h2>
+      <p class="text-xs text-gray-500 mt-1">Ingresa tus credenciales de Palomo</p>
+    </div>
+
+    <div class="flex flex-col gap-4">
+      <div>
+        <label class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 block">Usuario</label>
+        <input type="text" [(ngModel)]="loginData.username" (keyup.enter)="iniciarSesion()"
+               class="w-full p-2.5 border border-gray-300 rounded text-sm font-bold text-gray-700 focus:ring-2 focus:ring-[#294337] outline-none bg-gray-50">
+      </div>
+
+      <div>
+        <label class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 block">Contraseña</label>
+        <input type="password" [(ngModel)]="loginData.password" (keyup.enter)="iniciarSesion()"
+               class="w-full p-2.5 border border-gray-300 rounded text-sm font-bold text-gray-700 focus:ring-2 focus:ring-[#294337] outline-none bg-gray-50">
+      </div>
+
+      <button (click)="iniciarSesion()" 
+              class="w-full mt-2 bg-[#294337] text-white py-3 rounded hover:bg-gray-800 transition-colors font-bold text-sm shadow-md">
+        ENTRAR AL SISTEMA
+      </button>
+    </div>
   </div>
 </div>
