@@ -175,6 +175,53 @@
             </div>
           </div>
 
+          <!-- BARRA DE PROYECCIONES / VERSIONES (Píldoras) -->
+          <div class="mb-5 flex flex-wrap items-center gap-2 bg-gray-50/70 p-3 rounded-lg border border-gray-200 shadow-inner">
+            <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mr-2 flex items-center gap-1">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Control de Versiones:
+            </span>
+            
+            <!-- Píldora: Versión Oficial -->
+            <button (click)="seleccionarVersion(style, null)"
+                    [ngClass]="style.activePresetId === null ? 'bg-[#294337] text-white shadow-sm ring-2 ring-offset-1 ring-[#294337]' : 'bg-white text-gray-500 border border-gray-300 hover:bg-gray-100 hover:text-gray-800'"
+                    class="px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full" [ngClass]="style.activePresetId === null ? 'bg-green-400' : 'bg-gray-300'"></span>
+              BD Original
+            </button>
+
+            <!-- Píldoras Dinámicas: Las Proyecciones -->
+            <div *ngFor="let preset of style.presets" class="relative group">
+              
+              <button (click)="seleccionarVersion(style, preset)"
+                      [ngClass]="style.activePresetId === preset.id ? 'bg-[#8b5a2b] text-white shadow-sm ring-2 ring-offset-1 ring-[#8b5a2b]' : 'bg-white text-gray-500 border border-gray-300 hover:bg-gray-100 hover:text-gray-800'"
+                      class="px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5"
+                      [class.pr-14]="currentRole !== 'invitado'"> 
+                
+                <span class="w-2 h-2 rounded-full" [ngClass]="style.activePresetId === preset.id ? 'bg-yellow-400' : 'bg-gray-300'"></span>
+                {{ preset.nombre_preset }}
+              </button>
+              
+              <!-- Botón Renombrar (Lápiz) -->
+              <button *ngIf="currentRole !== 'invitado'"
+                      (click)="renombrarPreset(preset, $event)"
+                      class="absolute right-7 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 w-6 h-6 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 transition-all"
+                      title="Renombrar Proyección">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" /></svg>
+              </button>
+
+              <!-- Botón Borrar Preset (Basura) -->
+              <button *ngIf="['admin', 'operador'].includes(currentRole)"
+                      (click)="eliminarPreset(style, preset.id, $event)"
+                      class="absolute right-1 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-600 hover:bg-red-50 w-6 h-6 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 transition-all font-bold"
+                      title="Eliminar Proyección">
+                &times;
+              </button>
+            </div>
+          </div>
+          
           <!-- PANEL INFERIOR: IMAGEN Y DETALLES DE MATERIALES -->
           <div class="flex flex-col md:flex-row gap-6">
             
@@ -234,31 +281,71 @@
                       </span>
                     </div>
                     
-                    <!-- GRID DE MATERIALES -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <!-- GRID DE MATERIALES (Ahora a 2 columnas máximo) -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      
                       <!-- Iteración de Materiales -->
-                      <div *ngFor="let material of comp.materials" class="flex items-center justify-between bg-white border border-gray-300 rounded p-2.5 shadow-sm focus-within:border-[#294337] hover:border-[#294337] transition-colors gap-2">
+                      <div *ngFor="let material of comp.materials; let mIndex = index" class="flex items-center justify-between bg-white border border-gray-300 rounded p-2 shadow-sm focus-within:border-[#294337] transition-colors gap-2" [ngClass]="{'hover:border-[#294337]': !material.isLocked, 'bg-gray-50 border-gray-200': material.isLocked}">
                         
-                        <!-- Nombre del material Editable -->
+                        <!-- Nombre del material Editable (Con min-w-0 para evitar desbordes) -->
                         <textarea [(ngModel)]="material.name" 
                                   (ngModelChange)="style.hasChanges = true"
+                                  [disabled]="!!material.isLocked"
+                                  [ngClass]="{'opacity-60 cursor-not-allowed': material.isLocked}"
                                   rows="2"
-                                  class="text-xs font-bold text-gray-700 leading-tight bg-transparent outline-none flex-1 w-full border-b border-transparent focus:border-gray-300 resize-none overflow-hidden"
+                                  class="text-xs font-bold text-gray-700 leading-tight bg-transparent outline-none flex-1 min-w-0 border-b border-transparent focus:border-gray-300 resize-none overflow-hidden disabled:border-transparent py-1"
                                   placeholder="Nombre material"></textarea>
                         
-                        <!-- Costo Editable -->
-                        <div class="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded px-2 py-1 shrink-0">
-                          <span class="text-gray-500 text-sm font-bold">{{ getCurrencySymbol(category.selectedCurrency) }}</span>
-                          <input type="number" step="0.01" 
-                                 [ngModel]="getConvertedValue(material.cost, category.selectedCurrency)"
-                                 (ngModelChange)="material.cost = setUsdFromConverted($event, category.selectedCurrency)"
-                                 (ngModelChange)="style.hasChanges = true"
-                                 class="w-16 text-sm font-bold text-right bg-transparent outline-none text-[#294337]">
+                        <!-- Controles a la derecha (Protegidos con shrink-0) -->
+                        <div class="flex items-center gap-2 shrink-0">
+                          
+                          <!-- Costo Editable -->
+                          <div class="flex items-center bg-gray-50 border border-gray-200 rounded px-2 py-1"
+                              [ngClass]="{'opacity-60 bg-gray-200': material.isLocked}">
+                            <span class="text-gray-500 text-sm font-bold">{{ getCurrencySymbol(category.selectedCurrency) }}</span>
+                            <input type="number" step="0.01" 
+                                  [ngModel]="getConvertedValue(material.cost, category.selectedCurrency)"
+                                  (ngModelChange)="material.cost = setUsdFromConverted($event, category.selectedCurrency); style.hasChanges = true"
+                                  [disabled]="!!material.isLocked"
+                                  class="w-14 text-sm font-bold text-right bg-transparent outline-none text-[#294337] disabled:text-gray-500 disabled:cursor-not-allowed">
+                          </div>
+
+                          <!-- Botones de Acción (Candado y Basura) -->
+                          <div class="flex items-center gap-0.5">
+                            
+                            <!-- Botón Candado (Interactivo: Solo Admin/Operador) -->
+                            <button *ngIf="['admin', 'operador'].includes(currentRole)"
+                                    (click)="toggleLock(material, style)"
+                                    class="p-1.5 rounded hover:bg-gray-200 transition-colors"
+                                    [ngClass]="material.isLocked ? 'text-amber-500' : 'text-gray-300 hover:text-gray-500'"
+                                    title="Bloquear/Desbloquear Precio">
+                              <!-- Icono Cerrado -->
+                              <svg *ngIf="material.isLocked" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4"><path fill-rule="evenodd" d="M12 1.5a5.25 5.25 0 00-5.25 5.25v3a3 3 0 00-3 3v6.75a3 3 0 003 3h10.5a3 3 0 003-3v-6.75a3 3 0 00-3-3v-3c0-2.9-2.35-5.25-5.25-5.25zm3.75 8.25v-3a3.75 3.75 0 10-7.5 0v3h7.5z" clip-rule="evenodd" /></svg>
+                              <!-- Icono Abierto -->
+                              <svg *ngIf="!material.isLocked" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5V6.75a4.5 4.5 0 119 0v3.75M3.75 21.75h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H3.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg>
+                            </button>
+
+                            <!-- Icono Candado Fijo (Visualización: Solo Cliente/Invitado si está bloqueado) -->
+                            <div *ngIf="material.isLocked && !['admin', 'operador'].includes(currentRole)" 
+                                class="p-1.5 text-amber-500" title="Precio Fijo Protegido">
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4"><path fill-rule="evenodd" d="M12 1.5a5.25 5.25 0 00-5.25 5.25v3a3 3 0 00-3 3v6.75a3 3 0 003 3h10.5a3 3 0 003-3v-6.75a3 3 0 00-3-3v-3c0-2.9-2.35-5.25-5.25-5.25zm3.75 8.25v-3a3.75 3.75 0 10-7.5 0v3h7.5z" clip-rule="evenodd" /></svg>
+                            </div>
+
+                            <!-- Botón Eliminar Material (Visible si no es invitado y el material no está bloqueado) -->
+                            <button *ngIf="currentRole !== 'invitado' && !material.isLocked"
+                                    (click)="eliminarMaterial(comp, mIndex, style)"
+                                    class="p-1.5 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                                    title="Eliminar Material">
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                              </svg>
+                            </button>
+                          </div>
                         </div>
                       </div>
 
                       <!-- Botón Agregar Material -->
-                      <button *ngIf="['admin', 'operador', 'cliente'].includes(currentRole)" (click)="agregarMaterial(comp); style.hasChanges = true" class="flex items-center justify-center bg-gray-50 border-2 border-dashed border-gray-300 rounded p-2.5 hover:border-[#294337] hover:text-[#294337] hover:bg-gray-100 transition-colors text-gray-400 min-h-[46px]">
+                      <button (click)="agregarMaterial(comp); style.hasChanges = true" class="flex items-center justify-center bg-gray-50 border-2 border-dashed border-gray-300 rounded p-2 hover:border-[#294337] hover:text-[#294337] hover:bg-gray-100 transition-colors text-gray-400 min-h-[46px]">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
                           <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                         </svg>
@@ -296,15 +383,44 @@
                         </button>
                       </div>
 
-                      <!-- Lado Derecho: Botones de Guardar (Se muestran solo si hay cambios) -->
-                      <div class="flex w-full sm:w-auto" *ngIf="style.hasChanges">
-                        <button *ngIf="currentRole === 'cliente'" (click)="guardarPreset(style)" class="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#8b5a2b] text-white text-xs font-bold px-6 py-3 rounded shadow-md hover:bg-[#6b4421] transition-all transform hover:scale-105 hover:-translate-y-0.5">
-                          GUARDAR PROYECCIÓN
+                      <!-- Lado Derecho: Menú Inteligente de Guardado y Exportación -->
+                      <div class="flex w-full sm:w-auto gap-2" *ngIf="style.hasChanges">
+                        
+                        <!-- BOTÓN EXCLUSIVO PARA INVITADOS -->
+                        <button *ngIf="currentRole === 'invitado'" (click)="exportarProyeccionLocalCSV(style, category)" class="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#294337] text-white text-xs font-bold px-5 py-3 rounded shadow-md hover:bg-[#1e3229] transition-all transform hover:scale-105">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+                          DESCARGAR PROYECCIÓN (CSV)
                         </button>
 
-                        <button *ngIf="['admin', 'operador'].includes(currentRole)" (click)="guardarEstilo(category, style)" class="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#294337] text-white text-xs font-bold px-6 py-3 rounded shadow-md hover:bg-[#1e3229] transition-all transform hover:scale-105 hover:-translate-y-0.5">
-                          GUARDAR EN BD
-                        </button>
+                        <!-- MENÚ PARA USUARIOS REGISTRADOS (Admin, Operador, Cliente) -->
+                        <ng-container *ngIf="currentRole !== 'invitado'">
+                          
+                          <!-- ESCENARIO A: ESTAMOS VIENDO LA BD ORIGINAL -->
+                          <ng-container *ngIf="style.activePresetId === null">
+                            <!-- Todos (incluyendo Admin/Operador) pueden derivar una proyección nueva desde aquí -->
+                            <button (click)="guardarPreset(style)" class="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#8b5a2b] text-white text-xs font-bold px-5 py-3 rounded shadow-md hover:bg-[#6b4421] transition-all transform hover:scale-105">
+                              GUARDAR PROYECCIÓN
+                            </button>
+                            <!-- Solo Operadores y Admin pueden alterar la BD Oficial -->
+                            <button *ngIf="['admin', 'operador'].includes(currentRole)" (click)="guardarEstilo(category, style)" class="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#294337] text-white text-xs font-bold px-5 py-3 rounded shadow-md hover:bg-[#1e3229] transition-all transform hover:scale-105">
+                              GUARDAR EN BD
+                            </button>
+                          </ng-container>
+
+                          <!-- ESCENARIO B: ESTAMOS VIENDO UN PRESET ACTIVO -->
+                          <ng-container *ngIf="style.activePresetId !== null">
+                            <!-- Guardar como un preset totalmente nuevo -->
+                            <button (click)="guardarPreset(style)" class="w-full sm:w-auto flex items-center justify-center gap-2 bg-gray-500 text-white text-xs font-bold px-5 py-3 rounded shadow-md hover:bg-gray-600 transition-all transform hover:scale-105">
+                              GUARDAR COMO NUEVA
+                            </button>
+                            <!-- Sobreescribir el preset que estamos viendo -->
+                            <button (click)="actualizarPreset(style)" class="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#8b5a2b] text-white text-xs font-bold px-5 py-3 rounded shadow-md hover:bg-[#6b4421] transition-all transform hover:scale-105">
+                              ACTUALIZAR PROYECCIÓN
+                            </button>
+                          </ng-container>
+                          
+                        </ng-container>
+
                       </div>
                     </div>
 

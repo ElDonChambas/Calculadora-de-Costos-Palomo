@@ -1,7 +1,7 @@
 import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core'; 
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ProductCategory, ProductStyle, ShoeComponent } from '../../1-models/po.interface';
+import { MaterialDetail, ProductCategory, ProductStyle, ShoeComponent } from '../../1-models/po.interface';
 import { HttpClient } from '@angular/common/http';
 import { HttpClientModule } from '@angular/common/http';
 import * as Papa from 'papaparse';
@@ -119,11 +119,16 @@ export class PoFormComponent implements OnInit {
     }
   }
 
-  // 4. Cerrar sesión
+// 4. Cerrar sesión
   async cerrarSesion() {
+    // Vaciamos la vista de inmediato para evitar "fantasmas" durante la transición
+    if (this.categories.length > 0) {
+      this.categories[0].styles = [];
+    }
     await this.supabase.auth.signOut();
     this.currentUser = null;
     this.currentRole = 'invitado';
+    
     await this.cargarEstilosDesdeBD();
     this.cdr.detectChanges();
   }
@@ -153,180 +158,10 @@ export class PoFormComponent implements OnInit {
       isExpanded: true,
       marginPercent: 15,
       selectedCurrency: 'USD',
-      styles: [
-        // --- ZAPATO 1 ---
-        {
-          styleName: 'Edmund Plain Toe Boot',
-          description: 'Construcción Goodyear Welt',
-          gallery: [
-            { colorName: 'Black', imageUrl: '/productos/gold-edmund/gold-edmund-black.webp' },
-            { colorName: 'Brown', imageUrl: '/productos/gold-edmund/gold-edmund-brown.webp' },
-            { colorName: 'Whiskey', imageUrl: '/productos/gold-edmund/gold-edmund-whiskey.webp' },
-            { colorName: 'Polo', imageUrl: '/productos/gold-edmund/gold-edmund-polo.webp' },
-            { colorName: 'Cola', imageUrl: '/productos/gold-edmund/gold-edmund-cola.webp' }
-          ],
-          taxesPercent: 12, // Porcentaje inicial
-          freightCost: 15,  // Flete inicial
-          components: [
-            {
-              id: 'comp-upper',
-              componentName: 'A. Upper',
-              materials: [
-                { name: 'Portland Black 1.1-1.3', cost: 11.22 },
-                { name: 'Kip Lining Negro 0.8-1.0', cost: 0.35 }
-              ]
-            },
-            {
-              id: 'comp-linings',
-              componentName: 'B. Linings / Sundries',
-              materials: [
-                { name: 'Footbed Kip Lining', cost: 0.90 },
-                { name: 'Linings Cathay Tan', cost: 3.15 },
-                { name: 'Threads', cost: 0.25 },
-                { name: 'Invisible Eyelets', cost: 0.96 },
-                { name: 'Cotton Laces', cost: 0.55 },
-                { name: 'Reinforcements', cost: 1.26 }
-              ]
-            },
-            {
-              id: 'comp-bottom',
-              componentName: 'C. Bottom Unit',
-              materials: [
-                { name: 'Leather Sole H-Verde', cost: 5.10 },
-                { name: 'Heel MCaffee/Leather', cost: 5.50 },
-                { name: 'Welt Cerco Strong Negro', cost: 4.35 },
-                { name: 'Footbed & Cushions', cost: 4.00 }
-              ]
-            },
-            {
-              id: 'comp-packaging',
-              componentName: 'D. Packaging',
-              materials: [
-                { name: 'Unit Box Small Palomo', cost: 1.50 },
-                { name: 'Master Box Small', cost: 0.60 },
-                { name: 'Tissue Paper', cost: 0.75 },
-                { name: 'Labeling', cost: 0.65 },
-                { name: 'Shoes Bag', cost: 2.50 }
-              ]
-            },
-            {
-              id: 'comp-misc',
-              componentName: 'E. Miscellaneous',
-              materials: [
-                { name: 'Costos Varios', cost: 1.95 }
-              ]
-            }
-          ]
-        },
-        // --- ZAPATO 2 ---
-        {
-          styleName: 'Sherman Chelsea Boot',
-          description: 'Construcción 360° Flat Leather',
-          gallery: [
-            { colorName: 'Black', imageUrl: '/productos/gold-sherman/gold-chelsea-Black.webp' },
-            { colorName: 'Brown', imageUrl: '/productos/gold-sherman/gold-chelsea-brown.webp' }
-          ],
-          taxesPercent: 12,
-          freightCost: 15,
-          components: [
-            {
-              id: 'comp-upper-sherman',
-              componentName: 'A. Upper',
-              materials: [
-                { name: 'C.F. Stead Repello Suede', cost: 24.00 }
-              ]
-            },
-            {
-              id: 'comp-linings-sherman',
-              componentName: 'B. Linings / Sundries',
-              materials: [
-                { name: 'Elásticos laterales', cost: 3.00 },
-                { name: 'Tiradores', cost: 1.00 },
-                { name: 'Linings', cost: 2.50 }
-              ]
-            },
-            {
-              id: 'comp-bottom-sherman',
-              componentName: 'C. Bottom Unit',
-              materials: [
-                { name: 'Vibram Outsole', cost: 12.50 },
-                { name: 'Entresuela', cost: 7.50 },
-                { name: 'Welt', cost: 3.00 }
-              ]
-            },
-            {
-              id: 'comp-packaging-sherman',
-              componentName: 'D. Packaging',
-              materials: [
-                { name: 'Unit Box', cost: 1.50 },
-                { name: 'Tissue Paper', cost: 0.75 }
-              ]
-            },
-            {
-              id: 'comp-misc-sherman',
-              componentName: 'E. Miscellaneous',
-              materials: [
-                { name: 'Costos Varios', cost: 1.95 }
-              ]
-            }
-          ]
-        },
-        // --- ZAPATO 3 ---
-        {
-          styleName: 'James Slipper',
-          description: 'Slipper de casa premium',
-          gallery: [
-            { colorName: 'Suede Toast', imageUrl: '/productos/gold-james/gold-james-suedetoast.webp' },
-            { colorName: 'Waxy Brown', imageUrl: '/productos/gold-james/gold-james-waxy.webp' }
-          ],
-          taxesPercent: 12,
-          freightCost: 10,
-          components: [
-            {
-              id: 'comp-upper-sherman',
-              componentName: 'A. Upper',
-              materials: [
-                { name: 'C.F. Stead Repello Suede', cost: 24.00 }
-              ]
-            },
-            {
-              id: 'comp-linings-sherman',
-              componentName: 'B. Linings / Sundries',
-              materials: [
-                { name: 'Elásticos laterales', cost: 3.00 },
-                { name: 'Tiradores', cost: 1.00 },
-                { name: 'Linings', cost: 2.50 }
-              ]
-            },
-            {
-              id: 'comp-bottom-sherman',
-              componentName: 'C. Bottom Unit',
-              materials: [
-                { name: 'Vibram Outsole', cost: 12.50 },
-                { name: 'Entresuela', cost: 7.50 },
-                { name: 'Welt', cost: 3.00 }
-              ]
-            },
-            {
-              id: 'comp-packaging-sherman',
-              componentName: 'D. Packaging',
-              materials: [
-                { name: 'Unit Box', cost: 1.50 },
-                { name: 'Tissue Paper', cost: 0.75 }
-              ]
-            },
-            {
-              id: 'comp-misc-sherman',
-              componentName: 'E. Miscellaneous',
-              materials: [
-                { name: 'Costos Varios', cost: 1.95 }
-              ]
-            }
-          ]
-        }
-      ]
+      styles: []
     }
   ];
+    
 
   // ==========================================
   // NUEVOS MÉTODOS DE CÁLCULO FINANCIERO
@@ -487,12 +322,11 @@ export class PoFormComponent implements OnInit {
     const archivo = event.target.files[0];
     if (archivo) {
       Papa.parse(archivo, {
-        header: true,
+        header: false, // <-- IMPORTANTE: Cambiamos a false para que Angular pueda leer los Reportes de REP crudos
         skipEmptyLines: true,
         complete: (resultados) => {
-          this.procesarDatosCSV(resultados.data);
-          // Opcional: Resetear el input para poder subir el mismo archivo modificado
-          event.target.value = '';
+          this.procesarArchivoInteligente(resultados.data as any [][]);
+          event.target.value = ''; // Reseteamos el input para poder volver a subir archivos
         },
         error: (error) => {
           console.error("Error leyendo el CSV:", error);
@@ -502,54 +336,130 @@ export class PoFormComponent implements OnInit {
     }
   }
 
-  // 3. Transformar las filas planas del Excel a la estructura anidada de Angular
-  procesarDatosCSV(filas: any[]) {
-    const zapatosAgrupados: { [nombre: string]: ProductStyle } = {};
+  // 3. Procesador Inteligente: Entiende tanto la Plantilla Original como los Reportes de REP
+  procesarArchivoInteligente(filas: any[][]) {
+    if (!filas || filas.length === 0) return;
 
-    filas.forEach(fila => {
-      const nombreZapato = fila['Shoe_Name']?.trim();
-      if (!nombreZapato) return;
+    // Leemos la primera celda del Excel para saber a qué nos enfrentamos
+    const primeraCelda = filas[0][0]?.toString().trim() || "";
 
-      // Si el zapato no existe aún, lo creamos con las 5 categorías por defecto
-      if (!zapatosAgrupados[nombreZapato]) {
-        zapatosAgrupados[nombreZapato] = {
-          styleName: nombreZapato,
-          description: 'Importado desde CSV',
-          gallery: [], // Sin fotos por defecto al importar
-          taxesPercent: parseFloat(fila['Taxes_%']) || 12,
-          freightCost: parseFloat(fila['Freight_$']) || 15,
-          components: [
-            { id: 'comp-upper', componentName: 'A. Upper', materials: [] },
-            { id: 'comp-linings', componentName: 'B. Linings / Sundries', materials: [] },
-            { id: 'comp-bottom', componentName: 'C. Bottom Unit', materials: [] },
-            { id: 'comp-packaging', componentName: 'D. Packaging', materials: [] },
-            { id: 'comp-misc', componentName: 'E. Miscellaneous', materials: [] }
-          ]
-        };
+    // =========================================================
+    // ESCENARIO 1: Es una Proyección de REP (El reporte bonito)
+    // =========================================================
+    if (primeraCelda.includes("REPORTE DE PROYECCION")) {
+      
+      // Extraemos los datos como si fuéramos detectives
+      const nombreZapato = filas.find(f => f[0] === 'Estilo:')?.[1]?.trim() || 'Proyección Importada';
+      const filaTaxes = filas.find(f => f[0] === 'Impuestos (Taxes):');
+      const filaFreight = filas.find(f => f[0] === 'Flete (Freight):');
+      
+      const taxes = filaTaxes && filaTaxes[1] ? parseFloat(filaTaxes[1].replace('%', '')) : 12;
+      const freight = filaFreight && filaFreight[1] ? parseFloat(filaFreight[1].replace(/[^0-9.-]+/g, "")) : 15;
+
+      const nuevoEstilo: ProductStyle = {
+        styleName: nombreZapato + ' (IMPORTADO)', // Le ponemos etiqueta para que no se confunda
+        description: 'Importado desde reporte de Proyección externa',
+        hasChanges: true,
+        gallery: [],
+        taxesPercent: taxes || 0,
+        freightCost: freight || 0,
+        components: [
+          { id: 'comp-upper', componentName: 'A. Upper', materials: [] },
+          { id: 'comp-linings', componentName: 'B. Linings / Sundries', materials: [] },
+          { id: 'comp-bottom', componentName: 'C. Bottom Unit', materials: [] },
+          { id: 'comp-packaging', componentName: 'D. Packaging', materials: [] },
+          { id: 'comp-misc', componentName: 'E. Miscellaneous', materials: [] }
+        ],
+        presets: [],
+        activePresetId: null,
+      };
+
+      // Encontramos dónde empieza la tabla de materiales dentro del reporte
+      const indexDesglose = filas.findIndex(f => f[0] === 'DESGLOSE DE MATERIALES');
+      if (indexDesglose !== -1) {
+        // Empezamos a leer 2 filas abajo para saltarnos los títulos
+        for (let i = indexDesglose + 2; i < filas.length; i++) {
+           const compName = filas[i][0]?.trim();
+           const matName = filas[i][1]?.trim();
+           const matCostStr = filas[i][2]?.toString().trim();
+           
+           if (!compName || !matName) continue;
+           const costo = parseFloat(matCostStr) || 0;
+           
+           const categoriaDestino = nuevoEstilo.components.find(c => c.componentName === compName);
+           if (categoriaDestino) {
+              categoriaDestino.materials.push({ name: matName, cost: costo });
+           }
+        }
       }
 
-      // Buscar en qué pestaña (categoría) va este material
-      const categoriaDestino = zapatosAgrupados[nombreZapato].components.find(
-        c => c.componentName === fila['Component_Category']?.trim()
-      );
-
-      // Inyectar el material si existe
-      if (categoriaDestino && fila['Material_Name']) {
-        categoriaDestino.materials.push({
-          name: fila['Material_Name'].trim(),
-          cost: parseFloat(fila['Material_Cost']) || 0
-        });
+      if (this.categories.length > 0) {
+        // Lo ponemos de PRIMERO en la lista (unshift) para que el Admin lo vea al instante
+        this.categories[0].styles.unshift(nuevoEstilo);
+        alert(`¡Proyección importada exitosamente como "${nuevoEstilo.styleName}"! Revísala y guárdala en BD si la apruebas.`);
+        this.cdr.detectChanges();
       }
-    });
-
-    // Extraer los zapatos creados y empujarlos a la categoría principal "Calculadora de Costos"
-    const nuevosZapatos = Object.values(zapatosAgrupados);
+    } 
     
-    // Suponiendo que la calculadora es la primera categoría (índice 0)
-    if (this.categories.length > 0) {
-      this.categories[0].styles = [...this.categories[0].styles, ...nuevosZapatos];
-      alert(`¡Se importaron ${nuevosZapatos.length} estilos correctamente!`);
-      this.cdr.detectChanges();
+    // =========================================================
+    // ESCENARIO 2: Es la Plantilla Masiva Original (Múltiples Zapatos)
+    // =========================================================
+    else if (primeraCelda.includes("Shoe_Name")) {
+      
+      const zapatosAgrupados: { [nombre: string]: ProductStyle } = {};
+      
+      // La fila 0 son los encabezados, empezamos en 1
+      for (let i = 1; i < filas.length; i++) {
+        const fila = filas[i];
+        const nombreZapato = fila[0]?.trim();
+        if (!nombreZapato) continue;
+
+        if (!zapatosAgrupados[nombreZapato]) {
+          zapatosAgrupados[nombreZapato] = {
+            styleName: nombreZapato,
+            description: 'Importado Masivamente desde Plantilla CSV',
+            hasChanges: true,
+            gallery: [],
+            taxesPercent: parseFloat(fila[1]) || 12,
+            freightCost: parseFloat(fila[2]) || 15,
+            components: [
+              { id: 'comp-upper', componentName: 'A. Upper', materials: [] },
+              { id: 'comp-linings', componentName: 'B. Linings / Sundries', materials: [] },
+              { id: 'comp-bottom', componentName: 'C. Bottom Unit', materials: [] },
+              { id: 'comp-packaging', componentName: 'D. Packaging', materials: [] },
+              { id: 'comp-misc', componentName: 'E. Miscellaneous', materials: [] }
+            ],
+            presets: [],
+            activePresetId: null,
+          };
+        }
+
+        const categoriaDestino = zapatosAgrupados[nombreZapato].components.find(
+          c => c.componentName === fila[3]?.trim()
+        );
+
+        if (categoriaDestino && fila[4]) {
+          categoriaDestino.materials.push({
+            name: fila[4].trim(),
+            cost: parseFloat(fila[5]) || 0
+          });
+        }
+      }
+
+      const nuevosZapatos = Object.values(zapatosAgrupados);
+      if (this.categories.length > 0 && nuevosZapatos.length > 0) {
+        // Agregamos los zapatos masivos al inicio de la lista
+        this.categories[0].styles = [...nuevosZapatos, ...this.categories[0].styles];
+        alert(`¡Se importaron ${nuevosZapatos.length} estilos desde la plantilla masiva original!`);
+        this.cdr.detectChanges();
+      }
+    } 
+    
+    // =========================================================
+    // ESCENARIO 3: Archivo Equivocado
+    // =========================================================
+    else {
+      alert('Formato de CSV no reconocido. Por favor, usa la plantilla de carga masiva o un reporte de proyección exportado de la plataforma.');
     }
   }
 
@@ -687,6 +597,13 @@ export class PoFormComponent implements OnInit {
 
       if (error) throw error;
       
+      // NUEVO: Actualizamos la foto original porque esta es la nueva realidad oficial
+      estilo.originalData = JSON.stringify({
+        taxesPercent: estilo.taxesPercent,
+        freightCost: estilo.freightCost,
+        components: estilo.components
+      });
+      
       // Apagamos el botón porque ya se guardó
       estilo.hasChanges = false;
       this.cdr.detectChanges();
@@ -699,12 +616,10 @@ export class PoFormComponent implements OnInit {
     // ==========================================
     // CARGAR PRODUCTOS DE SUPABASE
     // ==========================================
-  async cargarEstilosDesdeBD() {
+async cargarEstilosDesdeBD() {
     try {
-      // Preparamos la consulta
       let query = this.supabase.from('styles').select('*');
 
-      // 🛑 REGLA DE ORO: Si no es el admin, ocultamos los archivados desde la raíz
       if (!['admin', 'operador'].includes(this.currentRole)) {
         query = query.eq('is_hidden', false);
       }
@@ -712,49 +627,89 @@ export class PoFormComponent implements OnInit {
       const { data, error } = await query;
       if (error) throw error;
 
-      if (data && data.length > 0) {
+      // CORRECCIÓN: Quitamos el "&& data.length > 0" para que actualice la vista
+      // incluso si la base de datos devuelve un arreglo vacío.
+      if (data) {
         const estilosRecuperados: ProductStyle[] = data.map((item: any) => ({
           id: item.id,
           hasChanges: false,
-          isHidden: item.is_hidden, // <-- Mapeamos el estado de la BD
+          isHidden: item.is_hidden, 
           styleName: item.style_name,
           description: item.description,
           taxesPercent: item.taxes_percent,
           freightCost: item.freight_cost,
           gallery: item.gallery,
-          components: item.components
+          components: item.components,
+          presets: [],               
+          activePresetId: null,
+          originalData: JSON.stringify({
+            taxesPercent: item.taxes_percent,
+            freightCost: item.freight_cost,
+            components: item.components
+          })
         }));
 
         if (this.categories.length > 0) {
           this.categories[0].styles = estilosRecuperados;
         }
+
+        const { data: presetsData, error: presetsError } = await this.supabase
+          .from('presets')
+          .select('*');
+        
+        if (!presetsError && presetsData) {
+          this.categories[0].styles.forEach(estilo => {
+            estilo.presets = presetsData.filter((p: any) => p.style_id === estilo.id);
+          });
+        }
+
         this.cdr.detectChanges();
       }
     } catch (error) {
       console.error('Error cargando estilos:', error);
     }
   }
-  
+
   // Función exclusiva para el rol 'cliente' (REP)
+// ==========================================
+  // SISTEMA DE PROYECCIONES (PRESETS)
+  // ==========================================
+  // 1. Guardar Proyección (Mejorado con nombre)
   async guardarPreset(estilo: ProductStyle) {
     if (!this.currentUser) return;
     
+    const nombreProyeccion = prompt('Dale un nombre corto a esta proyección (Ej. "Ideas, Cambio en packaging"):');
+    if (!nombreProyeccion) return; // Si el usuario cancela, detenemos el proceso
+    
     try {
-      const { error } = await this.supabase
+      // Solo guardamos los datos numéricos y de componentes para no duplicar imágenes/títulos
+      const datosClave = {
+        taxesPercent: estilo.taxesPercent,
+        freightCost: estilo.freightCost,
+        components: estilo.components
+      };
+
+      const { data, error } = await this.supabase
         .from('presets')
         .insert({
           style_id: estilo.id,
-          nombre_preset: `Proyección - ${new Date().toLocaleDateString()}`,
+          nombre_preset: nombreProyeccion,
           creado_por: this.currentUser.id,
-          datos_modificados: estilo // Guardamos toda su versión alterada del zapato
-        });
+          datos_modificados: datosClave 
+        })
+        .select() // Pedimos que nos devuelva el registro para pintarlo de inmediato
+        .single();
 
       if (error) throw error;
       
-      // Apagamos el botón y notificamos
+      // Lo agregamos a la interfaz visual sin tener que recargar la página
+      if (!estilo.presets) estilo.presets = [];
+      estilo.presets.push(data);
+      
+      estilo.activePresetId = data.id; // Marcamos su nueva píldora como activa
       estilo.hasChanges = false;
       this.cdr.detectChanges();
-      alert('¡Proyección guardada con éxito! El equipo revisará tus números.');
+      alert('¡Proyección guardada con éxito!');
       
     } catch (error) {
       console.error('Error guardando la proyección:', error);
@@ -762,17 +717,179 @@ export class PoFormComponent implements OnInit {
     }
   }
 
+// 2. Intercambiar entre Oficial y Proyecciones
+  seleccionarVersion(estilo: ProductStyle, preset: any | null) {
+    if (preset === null) {
+      // VOLVER A LA VERSIÓN OFICIAL
+      if (estilo.originalData) {
+        const backup = JSON.parse(estilo.originalData);
+        estilo.taxesPercent = backup.taxesPercent;
+        estilo.freightCost = backup.freightCost;
+        // Al parsear el string, JavaScript crea objetos 100% nuevos e independientes
+        estilo.components = backup.components; 
+      }
+      estilo.activePresetId = null;
+    } else {
+      // APLICAR UNA PROYECCIÓN
+      const modificados = preset.datos_modificados;
+      estilo.taxesPercent = modificados.taxesPercent;
+      estilo.freightCost = modificados.freightCost;
+      // TRUCO CLAVE: Clonar los componentes del preset. Así, si el usuario sigue escribiendo, no muta la memoria
+      estilo.components = JSON.parse(JSON.stringify(modificados.components));
+      estilo.activePresetId = preset.id;
+    }
+    
+    estilo.hasChanges = false; 
+    this.cdr.detectChanges();
+  }
+
+  // 3. Eliminar una Proyección (Solo Admin/Operadores)
+  async eliminarPreset(estilo: ProductStyle, presetId: string, event: Event) {
+    event.stopPropagation(); // Evitar que seleccione la píldora al presionar la X
+    const confirmar = confirm('¿Estás seguro de que quieres borrar esta proyección?');
+    if (!confirmar) return;
+
+    try {
+      const { error } = await this.supabase.from('presets').delete().eq('id', presetId);
+      if (error) throw error;
+
+      // La quitamos visualmente
+      estilo.presets = estilo.presets?.filter(p => p.id !== presetId);
+      
+      // Si justo estábamos viendo la que borramos, nos regresamos a la Oficial
+      if (estilo.activePresetId === presetId) {
+        this.seleccionarVersion(estilo, null);
+      }
+      this.cdr.detectChanges();
+    } catch (error) {
+      console.error('Error borrando proyección:', error);
+    }
+  }
+
+  // 4. Actualizar una Proyección existente
+  async actualizarPreset(estilo: ProductStyle) {
+    if (!this.currentUser || !estilo.activePresetId) return;
+
+    try {
+      const datosClave = {
+        taxesPercent: estilo.taxesPercent,
+        freightCost: estilo.freightCost,
+        components: estilo.components
+      };
+
+      const { error } = await this.supabase
+        .from('presets')
+        .update({ datos_modificados: datosClave })
+        .eq('id', estilo.activePresetId);
+
+      if (error) throw error;
+
+      // Actualizamos la memoria local para que no haya que recargar la página
+      const preset = estilo.presets?.find(p => p.id === estilo.activePresetId);
+      if (preset) {
+        preset.datos_modificados = JSON.parse(JSON.stringify(datosClave));
+      }
+
+      estilo.hasChanges = false;
+      this.cdr.detectChanges();
+      alert('¡Proyección actualizada con éxito!');
+    } catch (error) {
+      console.error('Error actualizando:', error);
+      alert('Hubo un error al actualizar la proyección.');
+    }
+  }
+
+  // 5. Renombrar un Preset
+  async renombrarPreset(preset: any, event: Event) {
+    event.stopPropagation(); // Evitamos que al dar clic al lápiz, se cambie de pestaña
+    
+    const nuevoNombre = prompt('Ingresa el nuevo nombre para esta proyección:', preset.nombre_preset);
+    // Si cancela, lo deja en blanco, o pone el mismo nombre, no hacemos nada
+    if (!nuevoNombre || nuevoNombre.trim() === '' || nuevoNombre === preset.nombre_preset) return;
+
+    try {
+      const { error } = await this.supabase
+        .from('presets')
+        .update({ nombre_preset: nuevoNombre })
+        .eq('id', preset.id);
+
+      if (error) throw error;
+
+      preset.nombre_preset = nuevoNombre;
+      this.cdr.detectChanges();
+    } catch (error) {
+      console.error('Error renombrando:', error);
+      alert('Error al cambiar el nombre.');
+    }
+  }
+
+  // 6. Eliminar Material
+  eliminarMaterial(componente: ShoeComponent, index: number, estilo: ProductStyle) {
+    const confirmar = confirm('¿Borrar este material del desglose?');
+    if (!confirmar) return;
+    
+    componente.materials.splice(index, 1);
+    estilo.hasChanges = true; // Encendemos los botones de guardado
+    this.cdr.detectChanges();
+  }
+
+  // 7. Exportar Proyección Local (Para Invitados)
+  exportarProyeccionLocalCSV(estilo: ProductStyle, categoria: ProductCategory) {
+    const moneda = categoria.selectedCurrency || 'USD';
+    const simbolo = this.getCurrencySymbol(moneda);
+    
+    // Generamos el contenido del archivo con encabezados limpios
+    let csvContent = "REPORTE DE PROYECCION DE COSTOS - PALOMO 1953\n\n";
+    csvContent += `Estilo:,${estilo.styleName}\n`;
+    csvContent += `Moneda:,${moneda}\n\n`;
+    
+    // Resumen Financiero
+    csvContent += "RESUMEN FINANCIERO\n";
+    csvContent += `Costo Fab. Duramas:,${simbolo}${this.getConvertedValue(this.getDuramasCost(estilo), moneda).toFixed(2)}\n`;
+    csvContent += `Precio C/Margen:,${simbolo}${this.getConvertedValue(this.getFobPrice(categoria, estilo), moneda).toFixed(2)}\n`;
+    csvContent += `Impuestos (Taxes):,${estilo.taxesPercent}%\n`;
+    csvContent += `Flete (Freight):,${simbolo}${this.getConvertedValue(estilo.freightCost, moneda).toFixed(2)}\n`;
+    csvContent += `Precio Final (Landing Price):,${simbolo}${this.getConvertedValue(this.getLandingPrice(categoria, estilo), moneda).toFixed(2)}\n\n`;
+    
+    // Desglose de Materiales
+    csvContent += "DESGLOSE DE MATERIALES\n";
+    csvContent += "Componente,Material,Costo\n";
+
+    estilo.components.forEach(comp => {
+      comp.materials.forEach(mat => {
+        const costoConvertido = this.getConvertedValue(mat.cost, moneda).toFixed(2);
+        // Envolvemos los nombres en comillas por si el usuario les puso una coma al escribir
+        csvContent += `"${comp.componentName}","${mat.name}",${costoConvertido}\n`;
+      });
+    });
+
+    // Crear el archivo y forzar la descarga en el navegador
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Proyeccion_${estilo.styleName.replace(/\s+/g, '_')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Como el invitado no tiene nube, al descargar le apagamos el botón de guardar 
+    // para indicarle que su trabajo ya está a salvo en su computadora.
+    estilo.hasChanges = false;
+    this.cdr.detectChanges();
+  }
+
   // ==========================================
   // FUNCIONES DE ELIMINACIÓN Y OCULTAMIENTO
   // ==========================================
 
   // 1. Soft Delete (Ocultar)
+// 1. Soft Delete (Ocultar)
   async ocultarEstilo(categoria: ProductCategory, estilo: ProductStyle, index: number) {
     const confirmar = confirm(`¿Estás seguro de que quieres archivar/ocultar "${estilo.styleName}"?`);
     if (!confirmar) return;
 
     try {
-      // Si el estilo es nuevo y ni siquiera se ha guardado en BD, solo lo quitamos localmente
       if (!estilo.id) {
         categoria.styles.splice(index, 1);
         return;
@@ -785,11 +902,10 @@ export class PoFormComponent implements OnInit {
 
       if (error) throw error;
 
-      if (this.currentRole === 'admin') {
-        // Al Admin solo se le pone la etiqueta visual
+      // CORRECCIÓN: Ahora tanto Admin como Operador ven la etiqueta roja
+      if (['admin', 'operador'].includes(this.currentRole)) {
         estilo.isHidden = true;
       } else {
-        // A los Operadores se les desaparece inmediatamente de la vista
         categoria.styles.splice(index, 1);
       }
       
@@ -799,7 +915,7 @@ export class PoFormComponent implements OnInit {
       alert('Hubo un error al ocultar el producto.');
     }
   }
-
+  
   // 2. Hard Delete (Borrado definitivo - Solo Admin)
   async eliminarDefinitivo(categoria: ProductCategory, estilo: ProductStyle, index: number) {
     const confirmar = confirm(`🛑 CUIDADO: ¿Borrar DEFINITIVAMENTE "${estilo.styleName}"? Esta acción destruirá los datos y no se puede deshacer.`);
@@ -840,5 +956,19 @@ export class PoFormComponent implements OnInit {
       console.error('Error al restaurar:', error);
       alert('Hubo un error al intentar restaurar el producto.');
     }
+  }
+  
+  // ==========================================
+  // CANDADOS Y MATERIALES
+  // ==========================================
+
+  // Cambiar el estado del candado de un material
+  toggleLock(material: MaterialDetail, estilo: ProductStyle) {
+    // Invertimos el valor (si era true pasa a false, y viceversa)
+    material.isLocked = !material.isLocked;
+    
+    // Le avisamos a Angular que hubo un cambio para que muestre el botón de Guardar
+    estilo.hasChanges = true;
+    this.cdr.detectChanges();
   }
 }
