@@ -508,46 +508,26 @@ export class PoFormComponent implements OnInit {
   }
 
   async onImagenSeleccionada(event: any, variante: any) {
-    const file = event.target.files[0];
-    if (!file) return;
+      const file = event.target.files[0];
+      if (!file) return;
 
-    try {
-      // 1. Crear un nombre único para la imagen (para que no se sobreescriban)
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const filePath = `variantes/${fileName}`; // Se guardará en la carpeta "variantes" dentro del bucket
-
-      // 2. Subir el archivo físico a Supabase Storage
-      const { data, error } = await this.supabase.storage
-        .from('zapatos_imagenes') // El nombre del bucket que acabas de crear
-        .upload(filePath, file);
-
-      if (error) throw error;
-
-      // 3. Obtener la URL pública de la imagen recién subida
-      const { data: { publicUrl } } = this.supabase.storage
-        .from('zapatos_imagenes')
-        .getPublicUrl(filePath);
-
-      // 4. Asignar esa URL corta a la variante y encender el botón de guardado
-      variante.imageUrl = publicUrl;
+      // 1. Magia local: Creamos una URL temporal que solo existe en este navegador
+      variante.imageUrl = URL.createObjectURL(file);
       
+      // 2. Guardamos el archivo físico temporalmente para subirlo después
+      variante.fileToUpload = file; 
+
       if (this.activeStyleForVariants) {
         this.activeStyleForVariants.hasChanges = true;
       }
       
-      this.cdr.detectChanges(); // Actualizar la pantalla
-
-    } catch (error) {
-      console.error('Error al subir la imagen a Supabase:', error);
-      alert('Hubo un error subiendo la imagen. Revisa la consola.');
+      this.cdr.detectChanges(); // Actualizamos la vista inmediatamente
     }
-  }
 
   // Inicializar Supabase
   supabase = createClient(environment.supabaseUrl, environment.supabaseKey);
 
-  // ==========================================
+// ==========================================
   // AGREGAR PRODUCTOS
   // ==========================================
   
@@ -555,6 +535,7 @@ export class PoFormComponent implements OnInit {
     const nuevoEstilo: ProductStyle = {
       styleName: 'Nuevo Estilo',
       description: 'Descripción del zapato...',
+      hasChanges: true, // <-- Para que aparezcan los botones de guardado
       taxesPercent: 12,
       freightCost: 15,
       gallery: [],
@@ -564,21 +545,56 @@ export class PoFormComponent implements OnInit {
         { id: 'comp-bottom', componentName: 'C. Bottom Unit', materials: [] },
         { id: 'comp-packaging', componentName: 'D. Packaging', materials: [] },
         { id: 'comp-misc', componentName: 'E. Miscellaneous', materials: [] }
-      ]
+      ],
+      presets: [],               // <-- FUNDAMENTAL
+      activePresetId: null       // <-- Para que muestre el botón verde de "GUARDAR EN BD"
     };
-    categoria.styles.push(nuevoEstilo);
-    this.cdr.detectChanges(); // Forzamos actualización visual
+    
+    // Lo ponemos al principio de la lista para no tener que hacer scroll hasta abajo
+    categoria.styles.unshift(nuevoEstilo);
+    this.cdr.detectChanges(); 
   }
 
   // ==========================================
   // GUARDAR PRODUCTOS EN SUPABASE
   // ==========================================
-    async guardarEstilo(categoria: ProductCategory, estilo: ProductStyle) {
+  async guardarEstilo(categoria: ProductCategory, estilo: ProductStyle) {
     try {
-      // Si no tiene ID, lo creamos basándonos en el nombre (ej: "Edmund Plain Toe" -> "edmund-plain-toe")
       if (!estilo.id) {
         estilo.id = estilo.styleName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
       }
+
+      // --- NUEVO: SUBIDA DIFERIDA DE IMÁGENES ---
+      // Recorremos la galería buscando fotos que estén pendientes de subir
+      for (let variante of estilo.gallery) {
+        if ((variante as any).fileToUpload) {
+          const file = (variante as any).fileToUpload;
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+          const filePath = `variantes/${fileName}`; 
+
+          // Subimos a Storage
+          const { error: uploadError } = await this.supabase.storage
+            .from('zapatos_imagenes') 
+            .upload(filePath, file);
+
+          if (uploadError) {
+            console.error('Error subiendo imagen:', uploadError);
+            alert(`No se pudo subir la imagen de la variante ${variante.colorName}`);
+            throw uploadError;
+          }
+
+          // Obtenemos la URL oficial
+          const { data: { publicUrl } } = this.supabase.storage
+            .from('zapatos_imagenes')
+            .getPublicUrl(filePath);
+
+          // Reemplazamos la URL temporal por la oficial y borramos el archivo de la memoria
+          variante.imageUrl = publicUrl; 
+          delete (variante as any).fileToUpload; 
+        }
+      }
+      // --- FIN SUBIDA DE IMÁGENES ---
 
       const { data, error } = await this.supabase
         .from('styles')
@@ -597,14 +613,12 @@ export class PoFormComponent implements OnInit {
 
       if (error) throw error;
       
-      // NUEVO: Actualizamos la foto original porque esta es la nueva realidad oficial
       estilo.originalData = JSON.stringify({
         taxesPercent: estilo.taxesPercent,
         freightCost: estilo.freightCost,
         components: estilo.components
       });
       
-      // Apagamos el botón porque ya se guardó
       estilo.hasChanges = false;
       this.cdr.detectChanges();
       alert(`¡Estilo "${estilo.styleName}" guardado con éxito!`);

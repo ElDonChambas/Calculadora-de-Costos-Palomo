@@ -397,14 +397,21 @@
                           
                           <!-- ESCENARIO A: ESTAMOS VIENDO LA BD ORIGINAL -->
                           <ng-container *ngIf="style.activePresetId === null">
-                            <!-- Todos (incluyendo Admin/Operador) pueden derivar una proyección nueva desde aquí -->
-                            <button (click)="guardarPreset(style)" class="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#8b5a2b] text-white text-xs font-bold px-5 py-3 rounded shadow-md hover:bg-[#6b4421] transition-all transform hover:scale-105">
-                              GUARDAR PROYECCIÓN
-                            </button>
-                            <!-- Solo Operadores y Admin pueden alterar la BD Oficial -->
-                            <button *ngIf="['admin', 'operador'].includes(currentRole)" (click)="guardarEstilo(category, style)" class="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#294337] text-white text-xs font-bold px-5 py-3 rounded shadow-md hover:bg-[#1e3229] transition-all transform hover:scale-105">
+                            
+                            <!-- GUARDAR EN BD: Visible SIEMPRE para Admin/Operador. Para el Cliente SOLO si el zapato es nuevo (no tiene ID) -->
+                            <button *ngIf="['admin', 'operador'].includes(currentRole) || (currentRole === 'cliente' && !style.id)" 
+                                    (click)="guardarEstilo(category, style)" 
+                                    class="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#294337] text-white text-xs font-bold px-5 py-3 rounded shadow-md hover:bg-[#1e3229] transition-all transform hover:scale-105">
                               GUARDAR EN BD
                             </button>
+
+                            <!-- GUARDAR PROYECCIÓN: Visible para todos, pero SOLO si el zapato ya existe formalmente en la BD (tiene ID) -->
+                            <button *ngIf="style.id" 
+                                    (click)="guardarPreset(style)" 
+                                    class="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#8b5a2b] text-white text-xs font-bold px-5 py-3 rounded shadow-md hover:bg-[#6b4421] transition-all transform hover:scale-105">
+                              GUARDAR PROYECCIÓN
+                            </button>
+
                           </ng-container>
 
                           <!-- ESCENARIO B: ESTAMOS VIENDO UN PRESET ACTIVO -->

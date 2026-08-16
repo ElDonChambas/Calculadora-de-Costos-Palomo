@@ -15,7 +15,5 @@ export class AppComponent implements OnInit {
   title = 'PoFormPalomo1953';
   supabase = createClient(environment.supabaseUrl, environment.supabaseKey);
 
-  async ngOnInit() {
-    console.log('Variables de entorno:', environment);
-  }
+  async ngOnInit() {}
 }
