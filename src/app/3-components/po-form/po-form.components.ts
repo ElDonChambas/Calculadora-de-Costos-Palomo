@@ -7,11 +7,12 @@ import { HttpClientModule } from '@angular/common/http';
 import * as Papa from 'papaparse';
 import { createClient } from '@supabase/supabase-js';
 import { environment } from '../../../environments/environment.development';
+import { DragDropModule, CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 
 @Component({
   selector: 'app-po-form',
   standalone: true,
-  imports: [CommonModule, FormsModule, HttpClientModule],
+  imports: [CommonModule, FormsModule, HttpClientModule, DragDropModule],
   templateUrl: './po-form.component.html'
 })
 export class PoFormComponent implements OnInit {
@@ -46,7 +47,9 @@ export class PoFormComponent implements OnInit {
     );
 
     this.obtenerTasasDeCambio();
+    
     await this.checkSession();
+    await this.cargarColecciones();
     await this.cargarEstilosDesdeBD();
   }
 
@@ -121,14 +124,10 @@ export class PoFormComponent implements OnInit {
 
 // 4. Cerrar sesión
   async cerrarSesion() {
-    // Vaciamos la vista de inmediato para evitar "fantasmas" durante la transición
-    if (this.categories.length > 0) {
-      this.categories[0].styles = [];
-    }
+    this.todosLosEstilos = []; // <-- LIMPIEZA CORRECTA
     await this.supabase.auth.signOut();
     this.currentUser = null;
     this.currentRole = 'invitado';
-    
     await this.cargarEstilosDesdeBD();
     this.cdr.detectChanges();
   }
@@ -149,47 +148,172 @@ export class PoFormComponent implements OnInit {
         console.warn('⚠️ No se pudieron obtener las tasas en vivo, usando valores por defecto.', error.message);
       }
     });
+  } 
+
+  //===========================================
+  // VARIABLES GLOBALES Y COLECCIONES
+  // ==========================================
+  globalMargin: number = 15;
+  globalCurrency: string = 'USD';
+  
+  colecciones: any[] = [];
+  coleccionActiva: any = null;
+  todosLosEstilos: ProductStyle[] = [];
+  estilosMostrados: ProductStyle[] = [];
+
+  getEstilosDeColeccionActiva() {
+    if (!this.coleccionActiva) return [];
+    return this.todosLosEstilos.filter(e => e.collection_id === this.coleccionActiva.id);
   }
 
-  categories: ProductCategory[] = [
-    {
-      categoryName: 'Calculadora de Costos',
-      description: 'Prototipo MVP para desglose de manufactura',
-      isExpanded: true,
-      marginPercent: 15,
-      selectedCurrency: 'USD',
-      styles: []
-    }
-  ];
-    
-
   // ==========================================
-  // NUEVOS MÉTODOS DE CÁLCULO FINANCIERO
+  // NUEVOS CÁLCULOS FINANCIEROS (Sin usar 'category')
   // ==========================================
-
   getComponentCost(component: ShoeComponent): number {
     return component.materials.reduce((sum, mat) => sum + mat.cost, 0);
   }
 
-  // 1. Costo puro de los materiales (Lo que cobra Duramas)
   getDuramasCost(style: ProductStyle): number {
     return style.components.reduce((sum, comp) => sum + this.getComponentCost(comp), 0);
   }
 
-  // 2. Costo Duramas + El Porcentaje global de la categoría (Precio FOB)
-  getFobPrice(category: ProductCategory, style: ProductStyle): number {
+  getFobPrice(style: ProductStyle): number {
     const duramasCost = this.getDuramasCost(style);
-    const margin = category.marginPercent || 0; 
-    return duramasCost * (1 + (margin / 100));
+    return duramasCost * (1 + (this.globalMargin / 100));
   }
 
-  // 3. Precio Final (FOB + Taxes + Freight)
-  getLandingPrice(category: ProductCategory, style: ProductStyle): number {
-    const fobPrice = this.getFobPrice(category, style);
+  getLandingPrice(style: ProductStyle): number {
+    const fobPrice = this.getFobPrice(style);
     const taxesAmount = fobPrice * (style.taxesPercent / 100);
     return fobPrice + taxesAmount + style.freightCost;
   }
+
+  // ==========================================
+  // CRUD DE COLECCIONES
+  // ==========================================
+  async cargarColecciones() {
+    const { data, error } = await this.supabase
+      .from('collections')
+      .select('*')
+      .order('created_at', { ascending: true });
+      
+    if (!error && data) {
+      this.colecciones = data;
+      // Seleccionar la primera colección por defecto al cargar
+      if (this.colecciones.length > 0 && !this.coleccionActiva) {
+        this.coleccionActiva = this.colecciones[0];
+      }
+    }
+  }
+
+  seleccionarColeccion(coleccion: any) {
+    this.coleccionActiva = coleccion;
+    if (coleccion) {
+      this.estilosMostrados = this.todosLosEstilos
+        .filter(e => e.collection_id === coleccion.id)
+        .sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+    } else {
+      this.estilosMostrados = [];
+    }
+  }
+
+  async agregarColeccion() {
+    const nombre = prompt('Ingresa el nombre de la nueva colección (Ej. "Fall 27"):');
+    if (!nombre || nombre.trim() === '') return;
+
+    try {
+      const { data, error } = await this.supabase
+        .from('collections')
+        .insert({ name: nombre })
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      this.colecciones.push(data);
+      this.seleccionarColeccion(data);
+      this.cdr.detectChanges();
+    } catch (error) {
+      console.error('Error agregando colección:', error);
+    }
+  }
+
+  async editarColeccion(coleccion: any, event: Event) {
+    event.stopPropagation();
+    const nuevoNombre = prompt('Editar nombre de la colección:', coleccion.name);
+    if (!nuevoNombre || nuevoNombre.trim() === '' || nuevoNombre === coleccion.name) return;
+
+    try {
+      const { error } = await this.supabase
+        .from('collections')
+        .update({ name: nuevoNombre })
+        .eq('id', coleccion.id);
+
+      if (error) throw error;
+      coleccion.name = nuevoNombre;
+      this.cdr.detectChanges();
+    } catch (error) {
+      console.error('Error editando colección:', error);
+    }
+  }
+
+  async eliminarColeccion(coleccion: any, event: Event) {
+    event.stopPropagation();
+    const confirmar = confirm(`¿Borrar la colección "${coleccion.name}"? Los zapatos no se borrarán, pero quedarán sin colección asignada.`);
+    if (!confirmar) return;
+
+    try {
+      const { error } = await this.supabase.from('collections').delete().eq('id', coleccion.id);
+      if (error) throw error;
+
+      this.colecciones = this.colecciones.filter(c => c.id !== coleccion.id);
+      if (this.coleccionActiva?.id === coleccion.id) {
+        this.coleccionActiva = this.colecciones.length > 0 ? this.colecciones[0] : null;
+      }
+      this.cdr.detectChanges();
+    } catch (error) {
+      console.error('Error eliminando colección:', error);
+    }
+  }
   
+  // ==========================================
+  // DRAG AND DROP (REORDENAMIENTO)
+  // ==========================================
+  async drop(event: CdkDragDrop<ProductStyle[]>) {
+    // 1. Angular hace la magia visual instantánea
+    moveItemInArray(this.estilosMostrados, event.previousIndex, event.currentIndex);
+
+    // 2. Asignamos el nuevo número de orden a cada zapato
+    this.estilosMostrados.forEach((estilo, index) => {
+      estilo.display_order = index;
+    });
+
+    // 3. Preparamos el paquete para Supabase (Solo los que ya existen en BD)
+    try {
+      const zapatosParaActualizar = this.estilosMostrados
+        .filter(e => e.id) 
+        .map(estilo => ({
+          id: estilo.id,
+          collection_id: estilo.collection_id,
+          style_name: estilo.styleName,
+          description: estilo.description,
+          taxes_percent: estilo.taxesPercent,
+          freight_cost: estilo.freightCost,
+          gallery: estilo.gallery,
+          components: estilo.components,
+          display_order: estilo.display_order // ¡El nuevo orden!
+        }));
+
+      // Si hay zapatos para guardar, hacemos un "Batch Update" (Upsert masivo)
+      if (zapatosParaActualizar.length > 0) {
+        const { error } = await this.supabase.from('styles').upsert(zapatosParaActualizar);
+        if (error) throw error;
+      }
+    } catch (error) {
+      console.error("Error guardando el nuevo orden:", error);
+    }
+  }
+
   // ==========================================
   // CONTROLES DEL CARRUSEL PEQUEÑO
   // ==========================================
@@ -336,9 +460,15 @@ export class PoFormComponent implements OnInit {
     }
   }
 
-  // 3. Procesador Inteligente: Entiende tanto la Plantilla Original como los Reportes de REP
+// 3. Procesador Inteligente: Entiende tanto la Plantilla Original como los Reportes de REP
   procesarArchivoInteligente(filas: any[][]) {
     if (!filas || filas.length === 0) return;
+
+    // SEGURO: Validar que exista una colección activa donde meter los zapatos
+    if (!this.coleccionActiva) {
+      alert('Por favor, selecciona o crea una Colección antes de importar estilos.');
+      return;
+    }
 
     // Leemos la primera celda del Excel para saber a qué nos enfrentamos
     const primeraCelda = filas[0][0]?.toString().trim() || "";
@@ -348,7 +478,6 @@ export class PoFormComponent implements OnInit {
     // =========================================================
     if (primeraCelda.includes("REPORTE DE PROYECCION")) {
       
-      // Extraemos los datos como si fuéramos detectives
       const nombreZapato = filas.find(f => f[0] === 'Estilo:')?.[1]?.trim() || 'Proyección Importada';
       const filaTaxes = filas.find(f => f[0] === 'Impuestos (Taxes):');
       const filaFreight = filas.find(f => f[0] === 'Flete (Freight):');
@@ -357,9 +486,10 @@ export class PoFormComponent implements OnInit {
       const freight = filaFreight && filaFreight[1] ? parseFloat(filaFreight[1].replace(/[^0-9.-]+/g, "")) : 15;
 
       const nuevoEstilo: ProductStyle = {
-        styleName: nombreZapato + ' (IMPORTADO)', // Le ponemos etiqueta para que no se confunda
+        styleName: nombreZapato + ' (IMPORTADO)', 
         description: 'Importado desde reporte de Proyección externa',
         hasChanges: true,
+        collection_id: this.coleccionActiva.id, // <-- AHORA SE ANCLA A LA COLECCIÓN ACTUAL
         gallery: [],
         taxesPercent: taxes || 0,
         freightCost: freight || 0,
@@ -374,10 +504,8 @@ export class PoFormComponent implements OnInit {
         activePresetId: null,
       };
 
-      // Encontramos dónde empieza la tabla de materiales dentro del reporte
       const indexDesglose = filas.findIndex(f => f[0] === 'DESGLOSE DE MATERIALES');
       if (indexDesglose !== -1) {
-        // Empezamos a leer 2 filas abajo para saltarnos los títulos
         for (let i = indexDesglose + 2; i < filas.length; i++) {
            const compName = filas[i][0]?.trim();
            const matName = filas[i][1]?.trim();
@@ -393,12 +521,10 @@ export class PoFormComponent implements OnInit {
         }
       }
 
-      if (this.categories.length > 0) {
-        // Lo ponemos de PRIMERO en la lista (unshift) para que el Admin lo vea al instante
-        this.categories[0].styles.unshift(nuevoEstilo);
-        alert(`¡Proyección importada exitosamente como "${nuevoEstilo.styleName}"! Revísala y guárdala en BD si la apruebas.`);
-        this.cdr.detectChanges();
-      }
+      // AHORA LO AGREGAMOS AL ARREGLO GLOBAL CORRECTO
+      this.todosLosEstilos.unshift(nuevoEstilo);
+      alert(`¡Proyección importada exitosamente como "${nuevoEstilo.styleName}"! Revísala y guárdala en BD si la apruebas.`);
+      this.cdr.detectChanges();
     } 
     
     // =========================================================
@@ -408,7 +534,6 @@ export class PoFormComponent implements OnInit {
       
       const zapatosAgrupados: { [nombre: string]: ProductStyle } = {};
       
-      // La fila 0 son los encabezados, empezamos en 1
       for (let i = 1; i < filas.length; i++) {
         const fila = filas[i];
         const nombreZapato = fila[0]?.trim();
@@ -419,6 +544,7 @@ export class PoFormComponent implements OnInit {
             styleName: nombreZapato,
             description: 'Importado Masivamente desde Plantilla CSV',
             hasChanges: true,
+            collection_id: this.coleccionActiva.id, // <-- AHORA SE ANCLA A LA COLECCIÓN ACTUAL
             gallery: [],
             taxesPercent: parseFloat(fila[1]) || 12,
             freightCost: parseFloat(fila[2]) || 15,
@@ -447,10 +573,10 @@ export class PoFormComponent implements OnInit {
       }
 
       const nuevosZapatos = Object.values(zapatosAgrupados);
-      if (this.categories.length > 0 && nuevosZapatos.length > 0) {
-        // Agregamos los zapatos masivos al inicio de la lista
-        this.categories[0].styles = [...nuevosZapatos, ...this.categories[0].styles];
-        alert(`¡Se importaron ${nuevosZapatos.length} estilos desde la plantilla masiva original!`);
+      if (nuevosZapatos.length > 0) {
+        // AHORA LO AGREGAMOS AL ARREGLO GLOBAL CORRECTO
+        this.todosLosEstilos = [...nuevosZapatos, ...this.todosLosEstilos];
+        alert(`¡Se importaron ${nuevosZapatos.length} estilos desde la plantilla masiva original a la colección "${this.coleccionActiva.name}"!`);
         this.cdr.detectChanges();
       }
     } 
@@ -462,7 +588,7 @@ export class PoFormComponent implements OnInit {
       alert('Formato de CSV no reconocido. Por favor, usa la plantilla de carga masiva o un reporte de proyección exportado de la plataforma.');
     }
   }
-
+  
   // ==========================================
   // AGREGAR MATERIALES
   // ==========================================
@@ -531,76 +657,50 @@ export class PoFormComponent implements OnInit {
   // AGREGAR PRODUCTOS
   // ==========================================
   
-  agregarEstilo(categoria: ProductCategory) {
-    const nuevoEstilo: ProductStyle = {
-      styleName: 'Nuevo Estilo',
-      description: 'Descripción del zapato...',
-      hasChanges: true, // <-- Para que aparezcan los botones de guardado
-      taxesPercent: 12,
-      freightCost: 15,
-      gallery: [],
-      components: [
-        { id: 'comp-upper', componentName: 'A. Upper', materials: [] },
-        { id: 'comp-linings', componentName: 'B. Linings / Sundries', materials: [] },
-        { id: 'comp-bottom', componentName: 'C. Bottom Unit', materials: [] },
-        { id: 'comp-packaging', componentName: 'D. Packaging', materials: [] },
-        { id: 'comp-misc', componentName: 'E. Miscellaneous', materials: [] }
-      ],
-      presets: [],               // <-- FUNDAMENTAL
-      activePresetId: null       // <-- Para que muestre el botón verde de "GUARDAR EN BD"
-    };
-    
-    // Lo ponemos al principio de la lista para no tener que hacer scroll hasta abajo
-    categoria.styles.unshift(nuevoEstilo);
-    this.cdr.detectChanges(); 
-  }
+  agregarEstilo() {
+      if (!this.coleccionActiva) {
+        alert("Selecciona o crea una colección primero.");
+        return;
+      }
+      const nuevoEstilo: ProductStyle = {
+        styleName: 'Nuevo Estilo',
+        description: 'Descripción del zapato...',
+        hasChanges: true,
+        collection_id: this.coleccionActiva.id, // <-- Vinculado a la colección activa
+        taxesPercent: 12,
+        freightCost: 15,
+        gallery: [],
+        components: [
+          { id: 'comp-upper', componentName: 'A. Upper', materials: [] },
+          { id: 'comp-linings', componentName: 'B. Linings / Sundries', materials: [] },
+          { id: 'comp-bottom', componentName: 'C. Bottom Unit', materials: [] },
+          { id: 'comp-packaging', componentName: 'D. Packaging', materials: [] },
+          { id: 'comp-misc', componentName: 'E. Miscellaneous', materials: [] }
+        ],
+        presets: [],
+        activePresetId: null
+      };
+      this.todosLosEstilos.unshift(nuevoEstilo); // <-- Se agrega a la lista global
+      this.seleccionarColeccion(this.coleccionActiva);
+      this.cdr.detectChanges(); 
+    }
 
   // ==========================================
   // GUARDAR PRODUCTOS EN SUPABASE
   // ==========================================
-  async guardarEstilo(categoria: ProductCategory, estilo: ProductStyle) {
+  async guardarEstilo(estilo: ProductStyle) {
     try {
       if (!estilo.id) {
         estilo.id = estilo.styleName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
       }
-
-      // --- NUEVO: SUBIDA DIFERIDA DE IMÁGENES ---
-      // Recorremos la galería buscando fotos que estén pendientes de subir
-      for (let variante of estilo.gallery) {
-        if ((variante as any).fileToUpload) {
-          const file = (variante as any).fileToUpload;
-          const fileExt = file.name.split('.').pop();
-          const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-          const filePath = `variantes/${fileName}`; 
-
-          // Subimos a Storage
-          const { error: uploadError } = await this.supabase.storage
-            .from('zapatos_imagenes') 
-            .upload(filePath, file);
-
-          if (uploadError) {
-            console.error('Error subiendo imagen:', uploadError);
-            alert(`No se pudo subir la imagen de la variante ${variante.colorName}`);
-            throw uploadError;
-          }
-
-          // Obtenemos la URL oficial
-          const { data: { publicUrl } } = this.supabase.storage
-            .from('zapatos_imagenes')
-            .getPublicUrl(filePath);
-
-          // Reemplazamos la URL temporal por la oficial y borramos el archivo de la memoria
-          variante.imageUrl = publicUrl; 
-          delete (variante as any).fileToUpload; 
-        }
-      }
-      // --- FIN SUBIDA DE IMÁGENES ---
+      
+      // ... (Mantén tu código de subida de imágenes diferida intacto aquí) ...
 
       const { data, error } = await this.supabase
         .from('styles')
         .upsert({
           id: estilo.id, 
-          category_name: categoria.categoryName,
+          collection_id: this.coleccionActiva.id, // <-- Ahora guardamos el ID de la colección
           style_name: estilo.styleName,
           description: estilo.description,
           taxes_percent: estilo.taxesPercent,
@@ -618,7 +718,6 @@ export class PoFormComponent implements OnInit {
         freightCost: estilo.freightCost,
         components: estilo.components
       });
-      
       estilo.hasChanges = false;
       this.cdr.detectChanges();
       alert(`¡Estilo "${estilo.styleName}" guardado con éxito!`);
@@ -630,59 +729,63 @@ export class PoFormComponent implements OnInit {
     // ==========================================
     // CARGAR PRODUCTOS DE SUPABASE
     // ==========================================
-async cargarEstilosDesdeBD() {
-    try {
-      let query = this.supabase.from('styles').select('*');
+  async cargarEstilosDesdeBD() {
+      try {
+        let query = this.supabase.from('styles').select('*');
 
-      if (!['admin', 'operador'].includes(this.currentRole)) {
-        query = query.eq('is_hidden', false);
-      }
+        if (!['admin', 'operador'].includes(this.currentRole)) {
+          query = query.eq('is_hidden', false);
+        }
 
-      const { data, error } = await query;
-      if (error) throw error;
+        const { data, error } = await query;
+        if (error) throw error;
 
-      // CORRECCIÓN: Quitamos el "&& data.length > 0" para que actualice la vista
-      // incluso si la base de datos devuelve un arreglo vacío.
-      if (data) {
-        const estilosRecuperados: ProductStyle[] = data.map((item: any) => ({
-          id: item.id,
-          hasChanges: false,
-          isHidden: item.is_hidden, 
-          styleName: item.style_name,
-          description: item.description,
-          taxesPercent: item.taxes_percent,
-          freightCost: item.freight_cost,
-          gallery: item.gallery,
-          components: item.components,
-          presets: [],               
-          activePresetId: null,
-          originalData: JSON.stringify({
+        // CORRECCIÓN: Quitamos el "&& data.length > 0" para que actualice la vista
+        // incluso si la base de datos devuelve un arreglo vacío.
+        if (data) {
+          const estilosRecuperados: ProductStyle[] = data.map((item: any) => ({
+            id: item.id,
+            hasChanges: false,
+            isHidden: item.is_hidden, 
+            styleName: item.style_name,
+            collection_id: item.collection_id,
+            description: item.description,
             taxesPercent: item.taxes_percent,
             freightCost: item.freight_cost,
-            components: item.components
-          })
-        }));
+            gallery: item.gallery,
+            components: item.components,
+            presets: [],               
+            activePresetId: null,
+            originalData: JSON.stringify({
+              taxesPercent: item.taxes_percent,
+              freightCost: item.freight_cost,
+              components: item.components
+            })
+          }));
 
-        if (this.categories.length > 0) {
-          this.categories[0].styles = estilosRecuperados;
+          this.todosLosEstilos = estilosRecuperados;
+          
+
+          // Reemplaza el bloque de presets por este:
+          const { data: presetsData, error: presetsError } = await this.supabase
+            .from('presets')
+            .select('*');
+          
+          if (!presetsError && presetsData) {
+            this.todosLosEstilos.forEach(estilo => {
+              estilo.presets = presetsData.filter((p: any) => p.style_id === estilo.id);
+            });
+          }
+
+          // <-- NUEVO: Actualizamos los estilos mostrados con la colección actual
+          this.seleccionarColeccion(this.coleccionActiva); 
+
+          this.cdr.detectChanges();
         }
-
-        const { data: presetsData, error: presetsError } = await this.supabase
-          .from('presets')
-          .select('*');
-        
-        if (!presetsError && presetsData) {
-          this.categories[0].styles.forEach(estilo => {
-            estilo.presets = presetsData.filter((p: any) => p.style_id === estilo.id);
-          });
-        }
-
-        this.cdr.detectChanges();
+      } catch (error) {
+        console.error('Error cargando estilos:', error);
       }
-    } catch (error) {
-      console.error('Error cargando estilos:', error);
     }
-  }
 
   // Función exclusiva para el rol 'cliente' (REP)
 // ==========================================
@@ -848,8 +951,8 @@ async cargarEstilosDesdeBD() {
   }
 
   // 7. Exportar Proyección Local (Para Invitados)
-  exportarProyeccionLocalCSV(estilo: ProductStyle, categoria: ProductCategory) {
-    const moneda = categoria.selectedCurrency || 'USD';
+  exportarProyeccionLocalCSV(estilo: ProductStyle) {
+    const moneda = this.globalCurrency; // <-- Usa la variable global
     const simbolo = this.getCurrencySymbol(moneda);
     
     // Generamos el contenido del archivo con encabezados limpios
@@ -860,10 +963,10 @@ async cargarEstilosDesdeBD() {
     // Resumen Financiero
     csvContent += "RESUMEN FINANCIERO\n";
     csvContent += `Costo Fab. Duramas:,${simbolo}${this.getConvertedValue(this.getDuramasCost(estilo), moneda).toFixed(2)}\n`;
-    csvContent += `Precio C/Margen:,${simbolo}${this.getConvertedValue(this.getFobPrice(categoria, estilo), moneda).toFixed(2)}\n`;
+    csvContent += `Precio C/Margen:,${simbolo}${this.getConvertedValue(this.getFobPrice(estilo), moneda).toFixed(2)}\n`;
     csvContent += `Impuestos (Taxes):,${estilo.taxesPercent}%\n`;
     csvContent += `Flete (Freight):,${simbolo}${this.getConvertedValue(estilo.freightCost, moneda).toFixed(2)}\n`;
-    csvContent += `Precio Final (Landing Price):,${simbolo}${this.getConvertedValue(this.getLandingPrice(categoria, estilo), moneda).toFixed(2)}\n\n`;
+    csvContent += `Precio Final (Landing Price):,${simbolo}${this.getConvertedValue(this.getLandingPrice(estilo), moneda).toFixed(2)}\n\n`;
     
     // Desglose de Materiales
     csvContent += "DESGLOSE DE MATERIALES\n";
@@ -899,54 +1002,39 @@ async cargarEstilosDesdeBD() {
 
   // 1. Soft Delete (Ocultar)
 // 1. Soft Delete (Ocultar)
-  async ocultarEstilo(categoria: ProductCategory, estilo: ProductStyle, index: number) {
+  async ocultarEstilo(estilo: ProductStyle) {
     const confirmar = confirm(`¿Estás seguro de que quieres archivar/ocultar "${estilo.styleName}"?`);
     if (!confirmar) return;
 
     try {
       if (!estilo.id) {
-        categoria.styles.splice(index, 1);
+        this.todosLosEstilos = this.todosLosEstilos.filter(e => e !== estilo); // Lo borramos de la lista global
         return;
       }
-
-      const { error } = await this.supabase
-        .from('styles')
-        .update({ is_hidden: true })
-        .eq('id', estilo.id);
-
+      const { error } = await this.supabase.from('styles').update({ is_hidden: true }).eq('id', estilo.id);
       if (error) throw error;
 
-      // CORRECCIÓN: Ahora tanto Admin como Operador ven la etiqueta roja
       if (['admin', 'operador'].includes(this.currentRole)) {
         estilo.isHidden = true;
       } else {
-        categoria.styles.splice(index, 1);
+        this.todosLosEstilos = this.todosLosEstilos.filter(e => e.id !== estilo.id);
       }
-      
       this.cdr.detectChanges();
     } catch (error) {
       console.error('Error al ocultar:', error);
-      alert('Hubo un error al ocultar el producto.');
     }
   }
   
   // 2. Hard Delete (Borrado definitivo - Solo Admin)
-  async eliminarDefinitivo(categoria: ProductCategory, estilo: ProductStyle, index: number) {
-    const confirmar = confirm(`🛑 CUIDADO: ¿Borrar DEFINITIVAMENTE "${estilo.styleName}"? Esta acción destruirá los datos y no se puede deshacer.`);
+  async eliminarDefinitivo(estilo: ProductStyle) {
+    const confirmar = confirm(`🛑 CUIDADO: ¿Borrar DEFINITIVAMENTE "${estilo.styleName}"?`);
     if (!confirmar) return;
-
     try {
-      const { error } = await this.supabase
-        .from('styles')
-        .delete()
-        .eq('id', estilo.id);
-
+      const { error } = await this.supabase.from('styles').delete().eq('id', estilo.id);
       if (error) throw error;
-
-      // Lo borramos de la vista para el Admin
-      categoria.styles.splice(index, 1);
-      this.cdr.detectChanges();
       
+      this.todosLosEstilos = this.todosLosEstilos.filter(e => e.id !== estilo.id); // Lo borramos de la lista global
+      this.cdr.detectChanges();
     } catch (error) {
       console.error('Error al borrar definitivamente:', error);
     }

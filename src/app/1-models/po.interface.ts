@@ -13,6 +13,8 @@ export interface ShoeComponent {
 
 export interface ProductStyle {
   id?: string;
+  collection_id?: string;
+  display_order?: number;
   hasChanges?: boolean;
   isHidden?: boolean;
   styleName: string;

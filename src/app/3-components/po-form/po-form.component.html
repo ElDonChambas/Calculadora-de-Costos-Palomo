@@ -7,11 +7,49 @@
       <img src="logo/logo.png" alt="Palomo 1953 Logo" class="mx-auto mb-4 object-contain h-16">
       <h1 class="text-2xl font-bold text-gray-800">Production Cost & Landing Price</h1>
       <p class="text-gray-500 mt-2">Plataforma interna de proyección de costos</p>
+      <!-- NAVBAR DE COLECCIONES (BARRA HORIZONTAL COMPLETA) -->
+      <div class="flex items-center gap-3 mt-6 mb-2 bg-gray-50/80 p-3 rounded-lg border border-gray-200 shadow-inner w-full overflow-x-auto">
+        
+        
+
+        <!-- Contenedor scrollable de las píldoras -->
+        <div class="flex items-center gap-2 flex-1 min-w-0 overflow-x-auto py-2 px-1 scrollbar-hide">
+          <div *ngFor="let col of colecciones" class="relative group shrink-0">
+            <button (click)="seleccionarColeccion(col)"
+                    [ngClass]="coleccionActiva?.id === col.id ? 'bg-[#294337] text-white shadow-md ring-2 ring-offset-2 ring-[#294337]' : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-100'"
+                    class="px-5 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-2"
+                    [class.pr-14]="['admin', 'operador'].includes(currentRole)">
+              {{ col.name }}
+            </button>
+            
+            <!-- Botón Editar Nombre Colección -->
+            <button *ngIf="['admin', 'operador'].includes(currentRole)"
+                    (click)="editarColeccion(col, $event)"
+                    class="absolute right-7 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 w-6 h-6 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 transition-all">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" /></svg>
+            </button>
+
+            <!-- Botón Borrar Colección -->
+            <button *ngIf="['admin', 'operador'].includes(currentRole)"
+                    (click)="eliminarColeccion(col, $event)"
+                    class="absolute right-1 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-600 hover:bg-red-50 w-6 h-6 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 transition-all font-bold">
+              &times;
+            </button>
+          </div>
+        </div>
+        
+        <!-- Botón Nueva Colección (Fijo a la derecha) -->
+        <button *ngIf="['admin', 'operador'].includes(currentRole)" (click)="agregarColeccion()" 
+                class="px-4 py-1.5 text-[10px] uppercase tracking-widest font-bold text-gray-400 hover:text-[#294337] hover:bg-[#294337]/10 border-2 border-dashed border-gray-300 hover:border-[#294337] rounded-full transition-colors flex items-center gap-1 shrink-0">
+          <span class="text-base leading-none mb-0.5">+</span> Nueva
+        </button>
+      </div>
+
     </div>
 
     <!-- Controles de Sesión -->
     <div class="flex-1 flex justify-end">
-      <!-- Si NO hay usuario logueado (Vista de Invitado) -->
+            <!-- Si NO hay usuario logueado (Vista de Invitado) -->
       <button *ngIf="!currentUser" (click)="isLoginModalOpen = true" 
               class="text-xs font-bold text-gray-400 hover:text-[#294337] transition-colors border border-transparent hover:border-gray-200 px-3 py-1.5 rounded">
         Acceso Equipo
@@ -64,48 +102,47 @@
     </div>
   </div>
 
-  <div class="mb-8">
-    <div *ngFor="let category of categories" class="mb-10 border border-gray-300 rounded-lg overflow-hidden shadow-sm">
+  <div class="mb-8" *ngIf="coleccionActiva">
+    <div class="mb-10 border border-gray-300 rounded-lg overflow-hidden shadow-sm">
       
-      <div class="bg-[#294337] text-white p-4 flex justify-between items-center cursor-pointer hover:bg-[#1e3229] transition-colors" 
-           (click)="category.isExpanded = !category.isExpanded">
+      <!-- NUEVA BARRA FINANCIERA DE LA COLECCIÓN ACTIVA -->
+      <div class="bg-[#294337] text-white p-4 flex flex-col md:flex-row justify-between items-center gap-4">
         <div>
-          <h2 class="text-xl font-bold tracking-widest uppercase">{{ category.categoryName }}</h2>
-          <p class="text-sm text-gray-300">{{ category.description }}</p>
+          <h2 class="text-xl font-bold tracking-widest uppercase">Colección: {{ coleccionActiva.name }}</h2>
         </div>
         
         <div class="flex items-center gap-4 md:gap-5">
-          
-          <div class="flex bg-white/10 p-1 rounded-lg border border-white/20 shadow-inner" (click)="$event.stopPropagation()">
-            <button (click)="category.selectedCurrency = 'USD'" 
-                    [ngClass]="category.selectedCurrency === 'USD' || !category.selectedCurrency ? 'bg-white text-[#294337] shadow-sm' : 'text-gray-300 hover:text-white'" 
-                    class="px-2.5 py-1 text-xs font-bold rounded transition-colors">USD</button>
-            <button (click)="category.selectedCurrency = 'EUR'" 
-                    [ngClass]="category.selectedCurrency === 'EUR' ? 'bg-white text-[#294337] shadow-sm' : 'text-gray-300 hover:text-white'" 
-                    class="px-2.5 py-1 text-xs font-bold rounded transition-colors">EUR</button>
-            <button (click)="category.selectedCurrency = 'JPY'" 
-                    [ngClass]="category.selectedCurrency === 'JPY' ? 'bg-white text-[#294337] shadow-sm' : 'text-gray-300 hover:text-white'" 
-                    class="px-2.5 py-1 text-xs font-bold rounded transition-colors">JPY</button>
+          <div class="flex bg-white/10 p-1 rounded-lg border border-white/20 shadow-inner">
+            <button (click)="globalCurrency = 'USD'" [ngClass]="globalCurrency === 'USD' ? 'bg-white text-[#294337] shadow-sm' : 'text-gray-300 hover:text-white'" class="px-2.5 py-1 text-xs font-bold rounded transition-colors">USD</button>
+            <button (click)="globalCurrency = 'EUR'" [ngClass]="globalCurrency === 'EUR' ? 'bg-white text-[#294337] shadow-sm' : 'text-gray-300 hover:text-white'" class="px-2.5 py-1 text-xs font-bold rounded transition-colors">EUR</button>
+            <button (click)="globalCurrency = 'JPY'" [ngClass]="globalCurrency === 'JPY' ? 'bg-white text-[#294337] shadow-sm' : 'text-gray-300 hover:text-white'" class="px-2.5 py-1 text-xs font-bold rounded transition-colors">JPY</button>
           </div>
 
-          <div class="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-lg border border-white/20 shadow-inner" (click)="$event.stopPropagation()">
+          <div class="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-lg border border-white/20 shadow-inner">
             <label class="text-[10px] font-bold text-gray-200 uppercase tracking-widest hidden sm:block">Margen (%)</label>
             <span class="text-[10px] font-bold text-gray-200 sm:hidden">%</span>
-            <input type="number" step="1" [(ngModel)]="category.marginPercent" 
-                   class="w-12 md:w-14 p-1 text-sm font-bold text-gray-900 border-none rounded focus:ring-2 focus:ring-white outline-none text-center bg-white">
-          </div>
-
-          <div class="transform transition-transform duration-300" [ngClass]="{'rotate-180': category.isExpanded}">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-6 h-6">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-            </svg>
+            <!-- AHORA USA globalMargin -->
+            <input type="number" step="1" [(ngModel)]="globalMargin" class="w-12 md:w-14 p-1 text-sm font-bold text-gray-900 border-none rounded focus:ring-2 focus:ring-white outline-none text-center bg-white">
           </div>
         </div>
       </div>
 
-      <div *ngIf="category.isExpanded" class="p-4 bg-gray-50 flex flex-col gap-6 border-t border-gray-300">
+      <!-- LISTA DE ESTILOS (Ahora filtrados mágicamente por colección) -->
+      <!-- NUEVO: Agregamos cdkDropList y el evento de soltar -->
+      <div cdkDropList (cdkDropListDropped)="drop($event)" class="p-4 bg-gray-50 flex flex-col gap-6 border-t border-gray-300">
         
-        <div *ngFor="let style of category.styles; let i = index" class="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
+        <!-- NUEVO: Agregamos cdkDrag -->
+        <div *ngFor="let style of estilosMostrados; let i = index" cdkDrag class="bg-white border border-gray-200 rounded-lg p-5 shadow-sm relative group">
+           
+          <!-- ÍCONO DRAG & DROP (MANIJA) -->
+          <div cdkDragHandle *ngIf="style.id && ['admin', 'operador'].includes(currentRole)" 
+               class="absolute -top-3 left-1/2 -translate-x-1/2 bg-white border border-gray-200 rounded-full px-4 py-1 cursor-grab active:cursor-grabbing text-gray-400 hover:text-[#294337] opacity-0 group-hover:opacity-100 transition-all shadow-sm flex items-center gap-1 z-10" title="Arrastrar para reordenar">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="9" cy="5" r="1.5"/><circle cx="15" cy="5" r="1.5"/>
+              <circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/>
+              <circle cx="9" cy="19" r="1.5"/><circle cx="15" cy="19" r="1.5"/>
+            </svg>
+          </div>
           
           <!-- PANEL SUPERIOR: TÍTULO Y CALCULADORA FINANCIERA -->
           <div *ngIf="style.isHidden" class="bg-red-100 text-red-800 text-[10px] font-bold px-3 py-1.5 rounded-md border border-red-200 mb-4 inline-flex items-center gap-2 shadow-sm">
@@ -134,7 +171,7 @@
               <div class="text-center px-3 border-r border-gray-300">
                 <p class="text-[9px] font-bold text-gray-500 uppercase tracking-wide">Costo Fab. Duramas</p>
                 <p class="text-lg font-bold text-gray-800">
-                  {{ getCurrencySymbol(category.selectedCurrency) }}{{ getConvertedValue(getDuramasCost(style), category.selectedCurrency) | number:'1.2-2' }}
+                  {{ getCurrencySymbol(globalCurrency) }}{{ getConvertedValue(getDuramasCost(style), globalCurrency) | number:'1.2-2' }}
                 </p>
               </div>
 
@@ -142,7 +179,7 @@
               <div class="text-center px-3 border-r border-gray-300 bg-white rounded shadow-sm py-1 border border-gray-200">
                 <p class="text-[9px] font-bold text-[#294337] uppercase tracking-wide">Precio C/Margen</p>
                 <p class="text-lg font-bold text-gray-900">
-                  {{ getCurrencySymbol(category.selectedCurrency) }}{{ getConvertedValue(getFobPrice(category, style), category.selectedCurrency) | number:'1.2-2' }}
+                  {{ getCurrencySymbol(globalCurrency) }}{{ getConvertedValue(getFobPrice(style), globalCurrency) | number:'1.2-2' }}
                 </p>
               </div>
               
@@ -155,11 +192,11 @@
                 <span class="text-gray-300 font-bold text-lg">+</span>
                 <div class="flex flex-col">
                   <!-- Título del Flete con símbolo de moneda dinámico -->
-                  <label class="text-[9px] font-bold text-gray-500 uppercase tracking-wide mb-1 text-center">Freight ({{ getCurrencySymbol(category.selectedCurrency) }})</label>
+                  <label class="text-[9px] font-bold text-gray-500 uppercase tracking-wide mb-1 text-center">Freight ({{ getCurrencySymbol(globalCurrency) }})</label>
                   <!-- Input de Flete con conversión de 2 vías -->
                   <input type="number" step="1" 
-                         [ngModel]="getConvertedValue(style.freightCost, category.selectedCurrency)"
-                         (ngModelChange)="style.freightCost = setUsdFromConverted($event, category.selectedCurrency)" (ngModelChange)="style.hasChanges = true"
+                         [ngModel]="getConvertedValue(style.freightCost, globalCurrency)"
+                         (ngModelChange)="style.freightCost = setUsdFromConverted($event, globalCurrency)" (ngModelChange)="style.hasChanges = true"
                          class="w-16 p-1 text-sm font-bold border border-gray-300 rounded focus:ring-1 focus:ring-[#294337] outline-none text-center bg-white shadow-sm">
                 </div>
               </div>
@@ -168,7 +205,7 @@
               <div class="text-center px-4 bg-[#294337] rounded py-1.5 ml-1 shadow-md min-w-[110px]">
                 <p class="text-[10px] font-bold text-gray-200 uppercase tracking-wide">Landing Price</p>
                 <p class="text-xl font-bold text-white">
-                  {{ getCurrencySymbol(category.selectedCurrency) }}{{ getConvertedValue(getLandingPrice(category, style), category.selectedCurrency) | number: (category.selectedCurrency === 'JPY' ? '1.0-0' : '1.2-2') }}
+                  {{ getCurrencySymbol(globalCurrency) }}{{ getConvertedValue(getLandingPrice(style), globalCurrency) | number: (globalCurrency === 'JPY' ? '1.0-0' : '1.2-2') }}
                 </p>
               </div>
 
@@ -229,20 +266,20 @@
             <div class="relative w-32 md:w-48 flex flex-col items-center shrink-0">
               <div class="relative w-full aspect-square rounded-md border border-gray-200 overflow-hidden group bg-gray-100 flex items-center justify-center">
                 
-                <img *ngIf="style.gallery[getImageIndex(category.categoryName, style.styleName)]?.imageUrl" 
-                     [src]="style.gallery[getImageIndex(category.categoryName, style.styleName)].imageUrl" 
+                <img *ngIf="style.gallery[getImageIndex(coleccionActiva.name, style.styleName)]?.imageUrl" 
+                     [src]="style.gallery[getImageIndex(coleccionActiva.name, style.styleName)].imageUrl" 
                      class="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity" 
-                     (click)="openModal(category.categoryName, style, getImageIndex(category.categoryName, style.styleName))">
+                     (click)="openModal(coleccionActiva.name, style, getImageIndex(coleccionActiva.name, style.styleName))">
                 
-                <button *ngIf="style.gallery.length > 1" (click)="prevImage(category.categoryName, style.styleName, style.gallery.length, $event)" 
+                <button *ngIf="style.gallery.length > 1" (click)="prevImage(coleccionActiva.name, style.styleName, style.gallery.length, $event)" 
                         class="absolute left-0 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black text-white w-6 h-6 flex items-center justify-center rounded-r transition-colors">‹</button>
-                <button *ngIf="style.gallery.length > 1" (click)="nextImage(category.categoryName, style.styleName, style.gallery.length, $event)" 
+                <button *ngIf="style.gallery.length > 1" (click)="nextImage(coleccionActiva.name, style.styleName, style.gallery.length, $event)" 
                         class="absolute right-0 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black text-white w-6 h-6 flex items-center justify-center rounded-l transition-colors">›</button>
               </div>
               
               <!-- Nombre del color actual -->
               <span class="text-[10px] font-bold text-gray-500 uppercase mt-2 text-center leading-tight">
-                {{ style.gallery[getImageIndex(category.categoryName, style.styleName)]?.colorName || 'Sin variantes' }}
+                {{ style.gallery[getImageIndex(coleccionActiva.name, style.styleName)]?.colorName || 'Sin variantes' }}
               </span>
               
               <!-- Botón Editar Galería -->
@@ -257,13 +294,13 @@
               <!-- Pestañas de Componentes (Ahora convertidas) -->
               <div class="flex flex-wrap gap-2 mb-4 border-b border-gray-200 pb-3">
                 <button *ngFor="let comp of style.components; let cIndex = index"
-                        (click)="setTabIndex(category.categoryName, style.styleName, cIndex)"
-                        [ngClass]="getTabIndex(category.categoryName, style.styleName) === cIndex ? 'bg-[#294337] text-white shadow-sm ring-2 ring-offset-1 ring-[#294337]' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                        (click)="setTabIndex(coleccionActiva.name, style.styleName, cIndex)"
+                        [ngClass]="getTabIndex(coleccionActiva.name, style.styleName) === cIndex ? 'bg-[#294337] text-white shadow-sm ring-2 ring-offset-1 ring-[#294337]' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
                         class="px-4 py-2 rounded-md text-sm font-bold transition-all flex items-center gap-2">
                   {{ comp.componentName }}
-                  <span [ngClass]="getTabIndex(category.categoryName, style.styleName) === cIndex ? 'bg-white/20 text-white' : 'bg-white text-gray-500 border border-gray-200'" 
+                  <span [ngClass]="getTabIndex(coleccionActiva.name, style.styleName) === cIndex ? 'bg-white/20 text-white' : 'bg-white text-gray-500 border border-gray-200'" 
                         class="px-1.5 py-0.5 rounded text-xs whitespace-nowrap">
-                    {{ getCurrencySymbol(category.selectedCurrency) }}{{ getConvertedValue(getComponentCost(comp), category.selectedCurrency) | number:'1.2-2' }}
+                    {{ getCurrencySymbol(globalCurrency) }}{{ getConvertedValue(getComponentCost(comp), globalCurrency) | number:'1.2-2' }}
                   </span>
                 </button>
               </div>
@@ -272,12 +309,12 @@
               <!-- Lista de Materiales Modificables -->
               <div class="bg-gray-50 border border-gray-200 rounded-md p-4 flex-1">
                 <ng-container *ngFor="let comp of style.components; let cIndex = index">
-                  <div *ngIf="getTabIndex(category.categoryName, style.styleName) === cIndex">
+                  <div *ngIf="getTabIndex(coleccionActiva.name, style.styleName) === cIndex">
                     
                     <div class="flex items-center justify-between mb-3 border-b border-gray-200 pb-2">
                       <h4 class="font-bold text-sm text-[#294337] uppercase tracking-wider">Desglose de Costos: {{ comp.componentName }}</h4>
                       <span class="text-xs font-bold text-gray-500">
-                        Subtotal: {{ getCurrencySymbol(category.selectedCurrency) }}{{ getConvertedValue(getComponentCost(comp), category.selectedCurrency) | number:'1.2-2' }}
+                        Subtotal: {{ getCurrencySymbol(globalCurrency) }}{{ getConvertedValue(getComponentCost(comp), globalCurrency) | number:'1.2-2' }}
                       </span>
                     </div>
                     
@@ -302,10 +339,10 @@
                           <!-- Costo Editable -->
                           <div class="flex items-center bg-gray-50 border border-gray-200 rounded px-2 py-1"
                               [ngClass]="{'opacity-60 bg-gray-200': material.isLocked}">
-                            <span class="text-gray-500 text-sm font-bold">{{ getCurrencySymbol(category.selectedCurrency) }}</span>
+                            <span class="text-gray-500 text-sm font-bold">{{ getCurrencySymbol(globalCurrency) }}</span>
                             <input type="number" step="0.01" 
-                                  [ngModel]="getConvertedValue(material.cost, category.selectedCurrency)"
-                                  (ngModelChange)="material.cost = setUsdFromConverted($event, category.selectedCurrency); style.hasChanges = true"
+                                  [ngModel]="getConvertedValue(material.cost, globalCurrency)"
+                                  (ngModelChange)="material.cost = setUsdFromConverted($event, globalCurrency); style.hasChanges = true"
                                   [disabled]="!!material.isLocked"
                                   class="w-14 text-sm font-bold text-right bg-transparent outline-none text-[#294337] disabled:text-gray-500 disabled:cursor-not-allowed">
                           </div>
@@ -360,7 +397,7 @@
                         
                         <!-- Botón Ocultar (Solo si NO está oculto) -->
                         <button *ngIf="['admin', 'operador'].includes(currentRole) && !style.isHidden" 
-                                (click)="ocultarEstilo(category, style, i)"
+                                (click)="ocultarEstilo(style)"
                                 class="flex-1 sm:flex-none flex items-center justify-center gap-2 text-xs font-bold text-red-400 hover:text-red-600 bg-red-50 hover:bg-red-100 px-4 py-2.5 rounded transition-colors border border-red-100 hover:border-red-200">
                           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>
                           OCULTAR PRODUCTO
@@ -376,7 +413,7 @@
 
                         <!-- Botón Destruir (SOLO ADMIN, si ya está oculto) -->
                         <button *ngIf="currentRole === 'admin' && style.isHidden" 
-                                (click)="eliminarDefinitivo(category, style, i)"
+                                (click)="eliminarDefinitivo(style)"
                                 class="flex-1 sm:flex-none flex items-center justify-center gap-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 px-4 py-2.5 rounded shadow-sm transition-colors border border-red-700">
                           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
                           ELIMINAR DEFINITIVAMENTE
@@ -387,7 +424,7 @@
                       <div class="flex w-full sm:w-auto gap-2" *ngIf="style.hasChanges">
                         
                         <!-- BOTÓN EXCLUSIVO PARA INVITADOS -->
-                        <button *ngIf="currentRole === 'invitado'" (click)="exportarProyeccionLocalCSV(style, category)" class="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#294337] text-white text-xs font-bold px-5 py-3 rounded shadow-md hover:bg-[#1e3229] transition-all transform hover:scale-105">
+                        <button *ngIf="currentRole === 'invitado'" (click)="exportarProyeccionLocalCSV(style)" class="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#294337] text-white text-xs font-bold px-5 py-3 rounded shadow-md hover:bg-[#1e3229] transition-all transform hover:scale-105">
                           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
                           DESCARGAR PROYECCIÓN (CSV)
                         </button>
@@ -400,7 +437,7 @@
                             
                             <!-- GUARDAR EN BD: Visible SIEMPRE para Admin/Operador. Para el Cliente SOLO si el zapato es nuevo (no tiene ID) -->
                             <button *ngIf="['admin', 'operador'].includes(currentRole) || (currentRole === 'cliente' && !style.id)" 
-                                    (click)="guardarEstilo(category, style)" 
+                                    (click)="guardarEstilo(style)" 
                                     class="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#294337] text-white text-xs font-bold px-5 py-3 rounded shadow-md hover:bg-[#1e3229] transition-all transform hover:scale-105">
                               GUARDAR EN BD
                             </button>
@@ -441,12 +478,12 @@
         </div>
       </div>
 
-      <button (click)="agregarEstilo(category)" 
+      <button (click)="agregarEstilo()" 
               class="w-full mt-4 flex items-center justify-center gap-2 bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-[#294337] hover:text-[#294337] transition-colors text-gray-500 font-bold">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
         </svg>
-        AGREGAR NUEVO ESTILO A {{ category.categoryName }}
+        AGREGAR NUEVO ESTILO A {{ coleccionActiva.name }}
       </button>
       
     </div>
