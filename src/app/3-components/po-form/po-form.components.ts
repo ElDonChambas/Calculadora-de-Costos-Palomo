@@ -466,6 +466,7 @@ export class PoFormComponent implements OnInit {
 
     // SEGURO: Validar que exista una colección activa donde meter los zapatos
     if (!this.coleccionActiva) {
+      this.seleccionarColeccion(this.coleccionActiva);
       alert('Por favor, selecciona o crea una Colección antes de importar estilos.');
       return;
     }
@@ -522,7 +523,9 @@ export class PoFormComponent implements OnInit {
       }
 
       // AHORA LO AGREGAMOS AL ARREGLO GLOBAL CORRECTO
-      this.todosLosEstilos.unshift(nuevoEstilo);
+      this.todosLosEstilos.push(nuevoEstilo);
+      this.registrarEstadoMundo(nuevoEstilo);
+      this.seleccionarColeccion(this.coleccionActiva);
       alert(`¡Proyección importada exitosamente como "${nuevoEstilo.styleName}"! Revísala y guárdala en BD si la apruebas.`);
       this.cdr.detectChanges();
     } 
@@ -588,13 +591,63 @@ export class PoFormComponent implements OnInit {
       alert('Formato de CSV no reconocido. Por favor, usa la plantilla de carga masiva o un reporte de proyección exportado de la plataforma.');
     }
   }
+  // ==========================================
+  // UNDO & REDO (HISTORIAL DE MATERIALES)
+  // ==========================================
+  registrarEstadoMundo(estilo: any) {
+    if (!estilo.history) {
+      estilo.history = [];
+      estilo.historyIndex = -1;
+    }
+    const estadoActual = JSON.stringify(estilo.components);
+    
+    // Evitamos duplicados si no ha cambiado nada
+    if (estilo.historyIndex >= 0 && estilo.history[estilo.historyIndex] === estadoActual) return;
+
+    // Si deshicimos pasos y ahora hacemos un cambio nuevo, borramos el futuro alterno
+    if (estilo.historyIndex < estilo.history.length - 1) {
+      estilo.history = estilo.history.slice(0, estilo.historyIndex + 1);
+    }
+
+    estilo.history.push(estadoActual);
+    estilo.historyIndex++;
+  }
+
+  deshacer(estilo: any) {
+    if (estilo.history && estilo.historyIndex > 0) {
+      estilo.historyIndex--;
+      estilo.components = JSON.parse(estilo.history[estilo.historyIndex]);
+      estilo.hasChanges = true;
+      this.cdr.detectChanges();
+    }
+  }
+
+  rehacer(estilo: any) {
+    if (estilo.history && estilo.historyIndex < estilo.history.length - 1) {
+      estilo.historyIndex++;
+      estilo.components = JSON.parse(estilo.history[estilo.historyIndex]);
+      estilo.hasChanges = true;
+      this.cdr.detectChanges();
+    }
+  }
   
   // ==========================================
-  // AGREGAR MATERIALES
+  // AGREGAR Y ELIMINAR MATERIALES
   // ==========================================
 
-  agregarMaterial(componente: ShoeComponent) {
+  agregarMaterial(componente: ShoeComponent, estilo: ProductStyle) {
     componente.materials.push({ name: 'Nuevo Material', cost: 0 });
+    this.registrarEstadoMundo(estilo); // Guardamos historial
+  }
+
+  eliminarMaterial(componente: ShoeComponent, index: number, estilo: ProductStyle) {
+    const confirmar = confirm('¿Borrar este material del desglose?');
+    if (!confirmar) return;
+    
+    componente.materials.splice(index, 1);
+    estilo.hasChanges = true; 
+    this.registrarEstadoMundo(estilo); // Guardamos historial
+    this.cdr.detectChanges();
   }
 
   // ==========================================
@@ -657,16 +710,27 @@ export class PoFormComponent implements OnInit {
   // AGREGAR PRODUCTOS
   // ==========================================
   
+// ==========================================
+  // AGREGAR PRODUCTOS
+  // ==========================================
+  
   agregarEstilo() {
       if (!this.coleccionActiva) {
         alert("Selecciona o crea una colección primero.");
         return;
       }
+
+      // Calculamos el último orden para asegurarnos de que nazca estrictamente al final
+      const ultimoOrden = this.estilosMostrados.length > 0 
+        ? Math.max(...this.estilosMostrados.map(e => e.display_order || 0)) 
+        : -1;
+
       const nuevoEstilo: ProductStyle = {
         styleName: 'Nuevo Estilo',
         description: 'Descripción del zapato...',
         hasChanges: true,
-        collection_id: this.coleccionActiva.id, // <-- Vinculado a la colección activa
+        collection_id: this.coleccionActiva.id,
+        display_order: ultimoOrden + 1, // <-- EL SEGURO ANTI-DESORDEN
         taxesPercent: 12,
         freightCost: 15,
         gallery: [],
@@ -680,11 +744,19 @@ export class PoFormComponent implements OnInit {
         presets: [],
         activePresetId: null
       };
-      this.todosLosEstilos.unshift(nuevoEstilo); // <-- Se agrega a la lista global
-      this.seleccionarColeccion(this.coleccionActiva);
+      
+      this.todosLosEstilos.push(nuevoEstilo);
+      this.registrarEstadoMundo(nuevoEstilo); 
+      this.seleccionarColeccion(this.coleccionActiva); 
+
+      // Pequeña animación para seguir el botón hacia abajo
+      setTimeout(() => {
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+      }, 100);
+
       this.cdr.detectChanges(); 
     }
-
+    
   // ==========================================
   // GUARDAR PRODUCTOS EN SUPABASE
   // ==========================================
@@ -940,16 +1012,6 @@ export class PoFormComponent implements OnInit {
     }
   }
 
-  // 6. Eliminar Material
-  eliminarMaterial(componente: ShoeComponent, index: number, estilo: ProductStyle) {
-    const confirmar = confirm('¿Borrar este material del desglose?');
-    if (!confirmar) return;
-    
-    componente.materials.splice(index, 1);
-    estilo.hasChanges = true; // Encendemos los botones de guardado
-    this.cdr.detectChanges();
-  }
-
   // 7. Exportar Proyección Local (Para Invitados)
   exportarProyeccionLocalCSV(estilo: ProductStyle) {
     const moneda = this.globalCurrency; // <-- Usa la variable global
@@ -1001,30 +1063,32 @@ export class PoFormComponent implements OnInit {
   // ==========================================
 
   // 1. Soft Delete (Ocultar)
-// 1. Soft Delete (Ocultar)
   async ocultarEstilo(estilo: ProductStyle) {
-    const confirmar = confirm(`¿Estás seguro de que quieres archivar/ocultar "${estilo.styleName}"?`);
-    if (!confirmar) return;
+      const verbo = ['admin', 'operador'].includes(this.currentRole) ? 'archivar/ocultar' : 'eliminar';
+      const confirmar = confirm(`¿Estás seguro de que quieres ${verbo} "${estilo.styleName}"?`);
+      if (!confirmar) return;
 
-    try {
-      if (!estilo.id) {
-        this.todosLosEstilos = this.todosLosEstilos.filter(e => e !== estilo); // Lo borramos de la lista global
-        return;
-      }
-      const { error } = await this.supabase.from('styles').update({ is_hidden: true }).eq('id', estilo.id);
-      if (error) throw error;
+      try {
+        if (!estilo.id) {
+          this.todosLosEstilos = this.todosLosEstilos.filter(e => e !== estilo); 
+          this.seleccionarColeccion(this.coleccionActiva); // Recarga vista
+          return;
+        }
+        const { error } = await this.supabase.from('styles').update({ is_hidden: true }).eq('id', estilo.id);
+        if (error) throw error;
 
-      if (['admin', 'operador'].includes(this.currentRole)) {
-        estilo.isHidden = true;
-      } else {
-        this.todosLosEstilos = this.todosLosEstilos.filter(e => e.id !== estilo.id);
+        if (['admin', 'operador'].includes(this.currentRole)) {
+          estilo.isHidden = true; // El admin ve la etiqueta roja
+        } else {
+          this.todosLosEstilos = this.todosLosEstilos.filter(e => e.id !== estilo.id); // REP ya no lo ve
+          this.seleccionarColeccion(this.coleccionActiva); // Recarga vista
+        }
+        this.cdr.detectChanges();
+      } catch (error) {
+        console.error('Error al ocultar:', error);
       }
-      this.cdr.detectChanges();
-    } catch (error) {
-      console.error('Error al ocultar:', error);
-    }
-  }
-  
+    }  
+
   // 2. Hard Delete (Borrado definitivo - Solo Admin)
   async eliminarDefinitivo(estilo: ProductStyle) {
     const confirmar = confirm(`🛑 CUIDADO: ¿Borrar DEFINITIVAMENTE "${estilo.styleName}"?`);
