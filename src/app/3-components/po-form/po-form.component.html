@@ -15,26 +15,31 @@
         <!-- Contenedor scrollable de las píldoras -->
         <div class="flex items-center gap-2 flex-1 min-w-0 overflow-x-auto py-2 px-1 scrollbar-hide">
           <div *ngFor="let col of colecciones" class="relative group shrink-0">
+            
+            <!-- Botón principal de la colección -->
             <button (click)="seleccionarColeccion(col)"
                     [ngClass]="coleccionActiva?.id === col.id ? 'bg-[#294337] text-white shadow-md ring-2 ring-offset-2 ring-[#294337]' : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-100'"
                     class="px-5 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-2"
-                    [class.pr-14]="['admin', 'operador'].includes(currentRole)">
+                    [class.pr-14]="['admin', 'operador'].includes(currentRole)"
+                    [class.pr-9]="currentRole === 'cliente'">
               {{ col.name }}
             </button>
             
-            <!-- Botón Editar Nombre Colección -->
+            <!-- Botón Editar Nombre Colección (Lápiz) -->
             <button *ngIf="['admin', 'operador', 'cliente'].includes(currentRole)"
                     (click)="editarColeccion(col, $event)"
-                    class="absolute right-7 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 w-6 h-6 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 transition-all">
+                    class="absolute top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 w-6 h-6 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 transition-all"
+                    [ngClass]="['admin', 'operador'].includes(currentRole) ? 'right-7' : 'right-1.5'">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" /></svg>
             </button>
 
-            <!-- Botón Borrar Colección -->
+            <!-- Botón Borrar Colección (X) -->
             <button *ngIf="['admin', 'operador'].includes(currentRole)"
                     (click)="eliminarColeccion(col, $event)"
                     class="absolute right-1 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-600 hover:bg-red-50 w-6 h-6 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 transition-all font-bold">
               &times;
             </button>
+            
           </div>
         </div>
         

@@ -283,34 +283,32 @@ export class PoFormComponent implements OnInit {
     // 1. Angular hace la magia visual instantánea
     moveItemInArray(this.estilosMostrados, event.previousIndex, event.currentIndex);
 
-    // 2. Asignamos el nuevo número de orden a cada zapato
+    // 2. Asignamos el nuevo número de orden a cada zapato de la vista actual
     this.estilosMostrados.forEach((estilo, index) => {
       estilo.display_order = index;
     });
 
-    // 3. Preparamos el paquete para Supabase (Solo los que ya existen en BD)
-    try {
-      const zapatosParaActualizar = this.estilosMostrados
-        .filter(e => e.id) 
-        .map(estilo => ({
-          id: estilo.id,
-          collection_id: estilo.collection_id,
-          style_name: estilo.styleName,
-          description: estilo.description,
-          taxes_percent: estilo.taxesPercent,
-          freight_cost: estilo.freightCost,
-          gallery: estilo.gallery,
-          components: estilo.components,
-          display_order: estilo.display_order // ¡El nuevo orden!
-        }));
+    // 3. CANDADO DE SEGURIDAD: Si es invitado, terminamos aquí. Solo fue un cambio visual local.
+    if (this.currentRole === 'invitado') return;
 
-      // Si hay zapatos para guardar, hacemos un "Batch Update" (Upsert masivo)
-      if (zapatosParaActualizar.length > 0) {
-        const { error } = await this.supabase.from('styles').upsert(zapatosParaActualizar);
-        if (error) throw error;
-      }
+    // 4. Guardamos el nuevo orden en Supabase
+    try {
+      // Usamos Promise.all para enviar actualizaciones específicas (solo a la columna display_order)
+      // a todos los zapatos que ya tienen un ID oficial en la base de datos.
+      const promesasDeActualizacion = this.estilosMostrados
+        .filter(e => e.id) 
+        .map(estilo => 
+          this.supabase
+            .from('styles')
+            .update({ display_order: estilo.display_order })
+            .eq('id', estilo.id)
+        );
+
+      // Ejecutamos todas las actualizaciones en paralelo para mayor velocidad
+      await Promise.all(promesasDeActualizacion);
+      
     } catch (error) {
-      console.error("Error guardando el nuevo orden:", error);
+      console.error("Error guardando el nuevo orden en la base de datos:", error);
     }
   }
 
@@ -577,6 +575,7 @@ export class PoFormComponent implements OnInit {
 
       const nuevosZapatos = Object.values(zapatosAgrupados);
       if (nuevosZapatos.length > 0) {
+        nuevosZapatos.forEach(zapato => this.registrarEstadoMundo(zapato));
         // AHORA LO AGREGAMOS AL ARREGLO GLOBAL CORRECTO
         this.todosLosEstilos = [...nuevosZapatos, ...this.todosLosEstilos];
         alert(`¡Se importaron ${nuevosZapatos.length} estilos desde la plantilla masiva original a la colección "${this.coleccionActiva.name}"!`);
@@ -614,19 +613,19 @@ export class PoFormComponent implements OnInit {
   }
 
   deshacer(estilo: any) {
-    if (estilo.history && estilo.historyIndex > 0) {
+    if (estilo.history && (estilo.historyIndex ?? 0) > 0) {
       estilo.historyIndex--;
       estilo.components = JSON.parse(estilo.history[estilo.historyIndex]);
-      estilo.hasChanges = true;
+      estilo.hasChanges = estilo.historyIndex !== 0;       
       this.cdr.detectChanges();
     }
   }
 
   rehacer(estilo: any) {
-    if (estilo.history && estilo.historyIndex < estilo.history.length - 1) {
+    if (estilo.history && (estilo.historyIndex ?? 0) < estilo.history.length - 1) {
       estilo.historyIndex++;
       estilo.components = JSON.parse(estilo.history[estilo.historyIndex]);
-      estilo.hasChanges = true;
+      estilo.hasChanges = true;       
       this.cdr.detectChanges();
     }
   }
@@ -828,6 +827,8 @@ export class PoFormComponent implements OnInit {
             components: item.components,
             presets: [],               
             activePresetId: null,
+            history: [JSON.stringify(item.components)],
+            historyIndex: 0,
             originalData: JSON.stringify({
               taxesPercent: item.taxes_percent,
               freightCost: item.freight_cost,
@@ -929,6 +930,10 @@ export class PoFormComponent implements OnInit {
     }
     
     estilo.hasChanges = false; 
+
+    estilo.history = [JSON.stringify(estilo.components)];
+    estilo.historyIndex = 0;
+
     this.cdr.detectChanges();
   }
 
